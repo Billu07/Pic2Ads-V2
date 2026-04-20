@@ -10,28 +10,28 @@ export default function HomePage() {
       id: "clip_ugc",
       title: "UGC Pulse Cut",
       mode: "Mode A - UGC",
-      src: "/hero-bg.webm",
+      src: "/hero-bg-lite.webm",
       poster: "/hero-poster.jpg",
     },
     {
       id: "clip_narrative",
       title: "Narrative Arc Reel",
       mode: "Mode B - Professional",
-      src: "/hero-bg-2.webm",
+      src: "/hero-bg-2-lite.webm",
       poster: "/hero-poster.jpg",
     },
     {
       id: "clip_tv",
       title: "TV Scene Sequence",
       mode: "Mode C - TV",
-      src: "/hero-bg.webm",
+      src: "/hero-bg-lite.webm",
       poster: "/hero-poster.jpg",
     },
     {
       id: "clip_variation",
       title: "Variant Playground",
       mode: "Mode Lab",
-      src: "/hero-bg-2.webm",
+      src: "/hero-bg-2-lite.webm",
       poster: "/hero-poster.jpg",
     },
   ];
@@ -58,7 +58,7 @@ export default function HomePage() {
       <section className="full-bleed-hero home-hero">
         <OptimizedVideo
           className="hero-video-bg"
-          src="/hero-bg.webm"
+          src="/hero-bg-lite.webm"
           poster="/hero-poster.jpg"
           priority
         />
@@ -148,9 +148,9 @@ export default function HomePage() {
           </p>
         </div>
         <div className="library-track">
-          {referenceLibrary.map((clip) => (
+          {referenceLibrary.map((clip, index) => (
             <article key={clip.id} className="library-item">
-              <OptimizedVideo src={clip.src} poster={clip.poster} />
+              <OptimizedVideo src={clip.src} poster={clip.poster} autoPlayInView={index === 0} />
               <div className="library-meta">
                 <p>{clip.mode}</p>
                 <h3>{clip.title}</h3>
@@ -169,7 +169,7 @@ export default function HomePage() {
         <h2>Cinematic content at scale</h2>
         <div className="bento-gallery">
           <div className="bento-item bento-large">
-            <OptimizedVideo className="bento-video" src="/hero-bg-2.webm" poster="/hero-poster.jpg" />
+            <OptimizedVideo className="bento-video" src="/hero-bg-2-lite.webm" poster="/hero-poster.jpg" />
             <div className="bento-content">
               <h4>High-Fidelity Render</h4>
               <p>Generated in Mode C</p>
