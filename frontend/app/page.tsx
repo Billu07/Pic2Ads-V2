@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OptimizedVideo } from "@/components/optimized-video";
 import { homePageKeywords } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
@@ -8,21 +9,21 @@ export default function HomePage() {
     {
       id: "clip_ugc",
       title: "UGC Pulse Cut",
-      mode: "Mode A · UGC",
+      mode: "Mode A - UGC",
       src: "/hero-bg.webm",
       poster: "/hero-poster.jpg",
     },
     {
       id: "clip_narrative",
       title: "Narrative Arc Reel",
-      mode: "Mode B · Professional",
+      mode: "Mode B - Professional",
       src: "/hero-bg-2.webm",
       poster: "/hero-poster.jpg",
     },
     {
       id: "clip_tv",
       title: "TV Scene Sequence",
-      mode: "Mode C · TV",
+      mode: "Mode C - TV",
       src: "/hero-bg.webm",
       poster: "/hero-poster.jpg",
     },
@@ -55,18 +56,12 @@ export default function HomePage() {
   return (
     <main className="home-main">
       <section className="full-bleed-hero home-hero">
-        <video
+        <OptimizedVideo
           className="hero-video-bg"
-          autoPlay
-          loop
-          muted
-          playsInline
+          src="/hero-bg.webm"
           poster="/hero-poster.jpg"
-          preload="metadata"
-        >
-          <source src="/hero-bg.webm" type="video/webm" />
-          <source src="/hero-bg-2.webm" type="video/webm" />
-        </video>
+          priority
+        />
         <div className="hero-overlay" aria-hidden="true" />
         <div className="hero-grid-overlay" aria-hidden="true" />
         <div className="hero-inner">
@@ -155,9 +150,7 @@ export default function HomePage() {
         <div className="library-track">
           {referenceLibrary.map((clip) => (
             <article key={clip.id} className="library-item">
-              <video autoPlay loop muted playsInline preload="metadata" poster={clip.poster}>
-                <source src={clip.src} type="video/webm" />
-              </video>
+              <OptimizedVideo src={clip.src} poster={clip.poster} />
               <div className="library-meta">
                 <p>{clip.mode}</p>
                 <h3>{clip.title}</h3>
@@ -176,16 +169,7 @@ export default function HomePage() {
         <h2>Cinematic content at scale</h2>
         <div className="bento-gallery">
           <div className="bento-item bento-large">
-            <video
-              className="bento-video"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
-            >
-              <source src="/hero-bg-2.webm" type="video/webm" />
-            </video>
+            <OptimizedVideo className="bento-video" src="/hero-bg-2.webm" poster="/hero-poster.jpg" />
             <div className="bento-content">
               <h4>High-Fidelity Render</h4>
               <p>Generated in Mode C</p>

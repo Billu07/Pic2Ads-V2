@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { Cormorant_Garamond, Sora } from "next/font/google";
 
 import "./globals.css";
@@ -40,7 +39,12 @@ export default function RootLayout({
           <header className="top-nav reveal">
             <div className="site-chrome">
               <Link href="/" className="brand brand-lockup">
-                <Image src="/logo.png" alt="Pic2Ads Logo" width={220} height={220} className="brand-logo" />
+                <span className="brand-wordmark" aria-label="Pic2Ads">
+                  <span className="brand-wordmark-main">
+                    Pic<span className="brand-wordmark-mid">2</span>Ads
+                  </span>
+                  <span className="brand-wordmark-sub">AI Video Ad Studio</span>
+                </span>
               </Link>
               <nav className="nav-links">
                 <Link href="/ugc-video-ads">UGC</Link>
