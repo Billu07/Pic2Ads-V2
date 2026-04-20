@@ -1,0 +1,501 @@
+"use client";
+
+import Link from "next/link";
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
+
+import {
+  createJob,
+  CreateJobMode,
+  DeliverableAspect,
+  JobCreatedResponse,
+  LocalPipelineResponse,
+  MediaUploadResponse,
+  runLocalPipeline,
+  uploadProductImage,
+} from "@/lib/api";
+
+type FormState = {
+  mode: CreateJobMode;
+  duration_s: number;
+  product_name: string;
+  product_image_url: string;
+  brief: string;
+  brand_id: string;
+  aspect: DeliverableAspect;
+  deliverable_duration: number;
+  auto_run_local: boolean;
+};
+
+const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; note: string }> = {
+  ugc: {
+    label: "Mode A - UGC",
+    duration: 15,
+    note: "Fast single-shot output for paid social testing loops.",
+  },
+  pro_arc: {
+    label: "Mode B - Professional UGC",
+    duration: 30,
+    note: "Narrative creator-style ads with optional extend continuity.",
+  },
+  tv: {
+    label: "Mode C - TV Commercial",
+    duration: 30,
+    note: "Multi-shot render planning for polished campaign cuts.",
+  },
+};
+
+function summarizeError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Unexpected request failure.";
+  }
+  try {
+    const parsed = JSON.parse(error.message) as { detail?: string };
+    if (parsed.detail) {
+      return parsed.detail;
+    }
+  } catch {
+    return error.message;
+  }
+  return error.message;
+}
+
+export function CreateJobWorkbench() {
+  const [form, setForm] = useState<FormState>({
+    mode: "ugc",
+    duration_s: MODE_PRESETS.ugc.duration,
+    product_name: "",
+    product_image_url: "",
+    brief: "",
+    brand_id: "",
+    aspect: "9:16",
+    deliverable_duration: 15,
+    auto_run_local: true,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdJob, setCreatedJob] = useState<JobCreatedResponse | null>(null);
+  const [pipelineResult, setPipelineResult] = useState<LocalPipelineResponse | null>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<MediaUploadResponse | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  const modePreset = useMemo(() => MODE_PRESETS[form.mode], [form.mode]);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setLocalPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setLocalPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedFile]);
+
+  function setMode(mode: CreateJobMode) {
+    const preset = MODE_PRESETS[mode];
+    setForm((prev) => ({
+      ...prev,
+      mode,
+      duration_s: preset.duration,
+      deliverable_duration: Math.min(preset.duration, 30),
+    }));
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) {
+      setUploadError("Select an image file first.");
+      return null;
+    }
+    setUploadError(null);
+    setUploadResult(null);
+    setUploadProgress(0);
+    setIsUploading(true);
+    try {
+      const uploaded = await uploadProductImage(selectedFile, {
+        onProgress: (percent) => setUploadProgress(percent),
+      });
+      setUploadResult(uploaded);
+      setForm((prev) => ({ ...prev, product_image_url: uploaded.url }));
+      setUploadProgress(100);
+      return uploaded.url;
+    } catch (uploadFailure) {
+      setUploadError(summarizeError(uploadFailure));
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  function handleFilePicked(file: File | null) {
+    setSelectedFile(file);
+    setUploadError(null);
+    setUploadResult(null);
+    setUploadProgress(0);
+  }
+
+  function onFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    handleFilePicked(event.currentTarget.files?.[0] ?? null);
+  }
+
+  function onDropFile(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingFile(false);
+    const dropped = event.dataTransfer.files?.[0];
+    if (!dropped) {
+      return;
+    }
+    handleFilePicked(dropped);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setCreatedJob(null);
+    setPipelineResult(null);
+
+    let resolvedImageUrl = form.product_image_url.trim();
+    if (!resolvedImageUrl && selectedFile) {
+      const uploadedUrl = await handleUpload();
+      if (!uploadedUrl) {
+        setError("Image upload failed. Please retry or paste a public image URL.");
+        return;
+      }
+      resolvedImageUrl = uploadedUrl;
+    }
+    try {
+      new URL(resolvedImageUrl);
+    } catch {
+      setError("Provide a valid product image URL (or select a file before creating).");
+      return;
+    }
+
+    if (!form.product_name.trim()) {
+      setError("Product name is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        mode: form.mode,
+        duration_s: form.duration_s,
+        product: {
+          product_name: form.product_name.trim(),
+          product_image_url: resolvedImageUrl,
+        },
+        deliverables: [{ aspect: form.aspect, duration: form.deliverable_duration }],
+        brief: form.brief.trim() || undefined,
+        brand_id: form.brand_id.trim() || undefined,
+      };
+
+      const created = await createJob(payload);
+      setCreatedJob(created);
+
+      if (form.auto_run_local) {
+        setIsRunning(true);
+        try {
+          const runResult = await runLocalPipeline(created.id);
+          setPipelineResult(runResult);
+        } finally {
+          setIsRunning(false);
+        }
+      }
+    } catch (submitError) {
+      setError(summarizeError(submitError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function triggerPipeline() {
+    if (!createdJob) {
+      return;
+    }
+    setError(null);
+    setIsRunning(true);
+    try {
+      const runResult = await runLocalPipeline(createdJob.id);
+      setPipelineResult(runResult);
+    } catch (runError) {
+      setError(summarizeError(runError));
+    } finally {
+      setIsRunning(false);
+    }
+  }
+
+  return (
+    <div className="workspace">
+      <section className="panel reveal">
+        <p className="eyebrow">Creative Workspace</p>
+        <h2 style={{ margin: 0 }}>Build your next job</h2>
+        <p className="caption">{modePreset.note}</p>
+
+        <div className="mode-switch" style={{ marginTop: "0.6rem" }}>
+          {(["ugc", "pro_arc", "tv"] as const).map((mode) => (
+            <button
+              type="button"
+              key={mode}
+              className={`mode-chip ${form.mode === mode ? "active" : ""}`}
+              onClick={() => setMode(mode)}
+            >
+              {MODE_PRESETS[mode].label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ marginTop: "0.95rem" }}>
+          <div className="field-grid">
+            <div className="field">
+              <label htmlFor="product_name">Product Name</label>
+              <input
+                id="product_name"
+                className="input"
+                value={form.product_name}
+                onChange={(event) => setForm((prev) => ({ ...prev, product_name: event.target.value }))}
+                placeholder="Glow Tonic Serum"
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="product_image_url">Product Image URL</label>
+              <input
+                id="product_image_url"
+                className="input"
+                value={form.product_image_url}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, product_image_url: event.target.value }))
+                }
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="field field-full">
+              <label htmlFor="product_upload">Or Upload Product Image</label>
+              <div
+                className={`dropzone ${isDraggingFile ? "active" : ""}`}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDraggingFile(true);
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDraggingFile(true);
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsDraggingFile(false);
+                }}
+                onDrop={onDropFile}
+              >
+                Drag and drop an image here, or choose a file.
+              </div>
+              <div className="upload-row">
+                <input
+                  id="product_upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="input"
+                  onChange={onFileInputChange}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleUpload}
+                  disabled={isUploading || !selectedFile}
+                >
+                  {isUploading ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+              {isUploading && (
+                <div className="upload-progress">
+                  <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+              <p className="hint">
+                Requires frontend server env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and
+                storage bucket.
+              </p>
+              {uploadError && <p className="hint">Upload error: {uploadError}</p>}
+              {uploadResult && (
+                <p className="hint">
+                  Uploaded to `{uploadResult.bucket}` at `{uploadResult.path}`.
+                </p>
+              )}
+              {(localPreviewUrl || form.product_image_url) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={localPreviewUrl ?? form.product_image_url}
+                  alt="Product preview"
+                  className="product-preview"
+                  loading="lazy"
+                />
+              )}
+            </div>
+
+            <div className="field">
+              <label htmlFor="duration_s">Ad Duration (seconds)</label>
+              <input
+                id="duration_s"
+                type="number"
+                min={10}
+                max={60}
+                className="input"
+                value={form.duration_s}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, duration_s: Number(event.target.value || 0) }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="aspect">Deliverable Aspect</label>
+              <select
+                id="aspect"
+                className="select"
+                value={form.aspect}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, aspect: event.target.value as DeliverableAspect }))
+                }
+              >
+                <option value="9:16">9:16 (Reels/TikTok)</option>
+                <option value="1:1">1:1 (Feed)</option>
+                <option value="16:9">16:9 (YouTube/Landing)</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="deliverable_duration">Deliverable Duration</label>
+              <input
+                id="deliverable_duration"
+                type="number"
+                min={6}
+                max={60}
+                className="input"
+                value={form.deliverable_duration}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    deliverable_duration: Number(event.target.value || 0),
+                  }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="brand_id">Brand ID (optional)</label>
+              <input
+                id="brand_id"
+                className="input"
+                value={form.brand_id}
+                onChange={(event) => setForm((prev) => ({ ...prev, brand_id: event.target.value }))}
+                placeholder="brand_internal_001"
+              />
+            </div>
+
+            <div className="field field-full">
+              <label htmlFor="brief">Creative Brief (optional)</label>
+              <textarea
+                id="brief"
+                className="textarea"
+                value={form.brief}
+                onChange={(event) => setForm((prev) => ({ ...prev, brief: event.target.value }))}
+                placeholder="Audience, value proposition, mood, and CTA preferences."
+              />
+            </div>
+          </div>
+
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.45rem",
+              marginTop: "0.75rem",
+              fontSize: "0.86rem",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.auto_run_local}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, auto_run_local: event.target.checked }))
+              }
+            />
+            Auto-run local pipeline after creation
+          </label>
+
+          <div className="cta-row">
+            <button
+              type="submit"
+              className="btn btn-accent"
+              disabled={isSubmitting || isRunning || isUploading}
+            >
+              {isSubmitting ? "Creating..." : "Create Job"}
+            </button>
+            {createdJob && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={triggerPipeline}
+                disabled={isUploading}
+              >
+                {isRunning ? "Running..." : "Run Pipeline"}
+              </button>
+            )}
+          </div>
+
+          {error && <p className="hint">Error: {error}</p>}
+        </form>
+      </section>
+
+      <aside className="panel reveal delay-1">
+        <p className="eyebrow">Run State</p>
+        <h3 style={{ margin: "0 0 0.3rem", fontSize: "1.5rem" }}>Production Snapshot</h3>
+        <p className="caption">
+          This workspace initializes a backend job and optionally starts the local pipeline runner.
+        </p>
+
+        <div className="status-box">
+          <p className="status-title">Mode</p>
+          <p className="caption" style={{ margin: 0 }}>
+            {modePreset.label}
+          </p>
+        </div>
+
+        <div className="status-box">
+          <p className="status-title">Job Creation</p>
+          <p className="caption" style={{ margin: 0 }}>
+            {createdJob ? `Created: ${createdJob.id}` : "Awaiting submit"}
+          </p>
+          {createdJob && (
+            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
+              <Link href={`/jobs/${createdJob.id}`} className="btn btn-primary">
+                Open Manifest
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="status-box">
+          <p className="status-title">Pipeline</p>
+          <p className="caption" style={{ margin: 0 }}>
+            {pipelineResult
+              ? `Video status: ${pipelineResult.video_generate_status}`
+              : isRunning
+                ? "Running local pipeline..."
+                : "Not started"}
+          </p>
+          {pipelineResult && (
+            <p className="hint" style={{ marginTop: "0.35rem" }}>
+              Intel: {pipelineResult.product_intel_status} | Duration plan:{" "}
+              {pipelineResult.duration_plan_status}
+            </p>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
