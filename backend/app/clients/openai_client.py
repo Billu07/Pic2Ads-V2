@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.models.concepts import TvConceptGenerateInput, TvConceptGenerateOutput
 from app.models.creative import (
     BrandConstraintsOutput,
     BrandStrategistInput,
@@ -261,6 +262,68 @@ class OpenAIClient:
         data = await self._post_responses(body=body, headers=headers)
         parsed = self._extract_json_output(data)
         return PersonaOutput.model_validate(parsed)
+
+    async def tv_concepts_from_context(self, payload: TvConceptGenerateInput) -> TvConceptGenerateOutput:
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured.")
+
+        schema = TvConceptGenerateOutput.model_json_schema()
+        body: dict[str, Any] = {
+            "model": settings.openai_script_model,
+            "input": [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                "You are the Pic2Ads concept generator for TV ads.\n"
+                                "Return exactly 3 concept treatments as strict JSON matching schema.\n"
+                                "Each concept must be materially different in creative angle.\n"
+                                "No invented product claims. Keep product fidelity grounded in provided intel.\n"
+                            ),
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                f"product_name={payload.product_name}\n"
+                                f"duration_s={payload.duration_s}\n"
+                                f"brief={payload.brief or 'none'}\n"
+                                f"product_intel={json.dumps(payload.product_intel.model_dump(), ensure_ascii=True)}\n"
+                                f"brand_constraints={json.dumps(payload.brand_constraints.model_dump(), ensure_ascii=True)}\n"
+                                f"persona={json.dumps(payload.persona.model_dump(), ensure_ascii=True)}\n\n"
+                                "Output constraints:\n"
+                                "- concept_id values must be: concept_1, concept_2, concept_3\n"
+                                "- each concept includes title, logline, treatment, audience_angle, style_notes\n"
+                                "- treatments should be production-usable one-page direction, not scripts\n"
+                            ),
+                        }
+                    ],
+                },
+            ],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "tv_concepts_output",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+            "max_output_tokens": 2800,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json",
+        }
+        data = await self._post_responses(body=body, headers=headers)
+        parsed = self._extract_json_output(data)
+        return TvConceptGenerateOutput.model_validate(parsed)
 
     async def _post_responses(self, *, body: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=80.0) as client:

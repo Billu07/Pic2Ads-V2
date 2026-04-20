@@ -13,6 +13,8 @@ This is the first implementation step for Pic2Ads.
 - Screenwriter endpoint (`POST /v1/jobs/{job_id}/scripts`) with mode-aware script generation + cache replay
 - TV gate endpoints:
   - `GET /v1/jobs/{job_id}/tv/gates`
+  - `POST /v1/jobs/{job_id}/concepts/generate`
+  - `GET /v1/jobs/{job_id}/concepts`
   - `POST /v1/jobs/{job_id}/concepts/select`
   - `POST /v1/jobs/{job_id}/storyboard/approve`
 - Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing `taskId` mappings (supports `Idempotency-Key`)
@@ -33,6 +35,7 @@ This is the first implementation step for Pic2Ads.
 - Segment regen endpoint: `POST /v1/jobs/{job_id}/segments/{segment_id}/regen`
 - `run-local` now runs: Product Intel -> Brand Strategist -> Casting Director -> Screenwriter -> Duration Planner -> Seedance submit
 - For `mode=tv`, `run-local` blocks render submission until concept is selected and storyboard is approved.
+- `concepts/select` now validates concept IDs against generated concepts stored in `workflow_state.tv.concepts`.
 
 ## Run locally
 1. `cd backend`

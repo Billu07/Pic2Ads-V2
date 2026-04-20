@@ -16,6 +16,8 @@ from app.models.jobs import (
     TvStoryboardApproveRequest,
     TvStoryboardApproveResponse,
 )
+from app.models.concepts import TvConceptGenerateResponse, TvConceptListResponse
+from app.services.concepts import concept_service
 from app.services.duration_planner import duration_planner_service
 from app.services.jobs import job_service
 from app.services.product_intel import product_intel_service
@@ -216,6 +218,33 @@ def get_tv_gate_status(job_id: str) -> TvGateStatusResponse:
     )
 
 
+@router.post("/{job_id}/concepts/generate", response_model=TvConceptGenerateResponse)
+async def generate_tv_concepts(job_id: str) -> TvConceptGenerateResponse:
+    try:
+        result = await concept_service.generate_for_job(job_id)
+    except RuntimeError as exc:
+        if str(exc) == "concept_generation_only_for_tv_mode":
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_operation_failed") from exc
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return result
+
+
+@router.get("/{job_id}/concepts", response_model=TvConceptListResponse)
+def list_tv_concepts(job_id: str) -> TvConceptListResponse:
+    try:
+        result = concept_service.list_for_job(job_id)
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_read_failed") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return result
+
+
 @router.post("/{job_id}/concepts/select", response_model=TvConceptSelectResponse)
 def select_tv_concept(job_id: str, req: TvConceptSelectRequest) -> TvConceptSelectResponse:
     try:
@@ -229,8 +258,10 @@ def select_tv_concept(job_id: str, req: TvConceptSelectRequest) -> TvConceptSele
     if found.mode != "tv":
         raise HTTPException(status_code=400, detail="concept_selection_only_for_tv_mode")
 
-    updated = job_service.select_tv_concept(job_id, req.concept_id.strip())
+    updated, reason = job_service.select_tv_concept(job_id, req.concept_id.strip())
     if not updated:
+        if reason == "concept_id_not_generated":
+            raise HTTPException(status_code=400, detail=reason)
         raise HTTPException(status_code=404, detail="job_not_found")
     state = job_service.get_tv_gate_state(job_id)
     if state is None:

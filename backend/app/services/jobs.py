@@ -28,9 +28,17 @@ class JobService:
                     "concept_selected": False,
                     "selected_concept_id": None,
                     "storyboard_approved": False,
+                    "concepts": [],
                 }
             }
         return {}
+
+    @staticmethod
+    def _extract_tv_state(workflow_state: dict[str, Any]) -> dict[str, Any]:
+        tv_state = workflow_state.get("tv", {})
+        if not isinstance(tv_state, dict):
+            return {}
+        return tv_state
 
     def create_job(self, req: CreateJobRequest) -> JobRecord:
         job_id = f"job_{uuid4().hex[:12]}"
@@ -189,7 +197,7 @@ class JobService:
                 "required": False,
             }
         state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
-        tv_state = state.get("tv", {}) if isinstance(state.get("tv"), dict) else {}
+        tv_state = self._extract_tv_state(state)
         concept_selected = bool(tv_state.get("concept_selected", False))
         storyboard_approved = bool(tv_state.get("storyboard_approved", False))
         selected_concept_id = tv_state.get("selected_concept_id")
@@ -204,7 +212,68 @@ class JobService:
             "required": True,
         }
 
-    def select_tv_concept(self, job_id: str, concept_id: str) -> bool:
+    def get_tv_concepts(self, job_id: str) -> list[dict[str, Any]] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select mode::text as mode, workflow_state
+                    from public.ad_job
+                    where id = %s
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        if str(row["mode"]) != "tv":
+            return []
+        state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
+        tv_state = self._extract_tv_state(state)
+        concepts = tv_state.get("concepts")
+        if not isinstance(concepts, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for item in concepts:
+            if isinstance(item, dict):
+                out.append(item)
+        return out
+
+    def set_tv_concepts(self, job_id: str, concepts: list[dict[str, Any]]) -> bool:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    update public.ad_job
+                    set workflow_state = jsonb_set(
+                      jsonb_set(
+                        jsonb_set(coalesce(workflow_state, '{}'::jsonb),
+                                  '{tv,concepts}', %s::jsonb, true),
+                        '{tv,concept_selected}', 'false'::jsonb, true
+                      ),
+                      '{tv,selected_concept_id}', 'null'::jsonb, true
+                    )
+                    where id = %s
+                      and mode = 'tv'
+                    """,
+                    (json.dumps(concepts), job_id),
+                )
+                updated = cur.rowcount > 0
+            conn.commit()
+        return updated
+
+    def select_tv_concept(self, job_id: str, concept_id: str) -> tuple[bool, str | None]:
+        concepts = self.get_tv_concepts(job_id)
+        if concepts is None:
+            return False, "job_not_found"
+        allowed_ids = {
+            str(item.get("concept_id"))
+            for item in concepts
+            if isinstance(item.get("concept_id"), str)
+        }
+        if concept_id not in allowed_ids:
+            return False, "concept_id_not_generated"
+
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -225,7 +294,9 @@ class JobService:
                 )
                 updated = cur.rowcount > 0
             conn.commit()
-        return updated
+        if not updated:
+            return False, "job_not_found"
+        return True, None
 
     def set_tv_storyboard_approved(self, job_id: str, approved: bool) -> bool:
         with get_db_connection() as conn:
