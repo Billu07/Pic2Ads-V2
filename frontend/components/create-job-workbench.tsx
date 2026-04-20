@@ -1,19 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  approveTvStoryboard,
   CreativeCtaStyle,
   CreativeHookStyle,
   CreativeOfferAngle,
   createJob,
   CreateJobMode,
   DeliverableAspect,
+  generateTvConcepts,
+  generateTvStoryboard,
+  getTvGateStatus,
+  getTvStoryboard,
   JobCreatedResponse,
   LocalPipelineResponse,
+  listTvConcepts,
   MediaUploadResponse,
   runLocalPipeline,
+  selectTvConcept,
+  TvConcept,
+  TvGateStatus,
+  TvStoryboardShot,
   uploadProductImage,
 } from "@/lib/api";
 
@@ -148,9 +158,13 @@ export function CreateJobWorkbench() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [isTvBusy, setIsTvBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdJob, setCreatedJob] = useState<JobCreatedResponse | null>(null);
   const [pipelineResult, setPipelineResult] = useState<LocalPipelineResponse | null>(null);
+  const [tvGateState, setTvGateState] = useState<TvGateStatus | null>(null);
+  const [tvConcepts, setTvConcepts] = useState<TvConcept[]>([]);
+  const [tvStoryboardShots, setTvStoryboardShots] = useState<TvStoryboardShot[]>([]);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -185,6 +199,93 @@ export function CreateJobWorkbench() {
       offer_angle: creativePreset.offer_angle,
       cta_style: creativePreset.cta_style,
     }));
+  }
+
+  const refreshTvWorkflow = useCallback(async (jobId: string) => {
+    const [gate, concepts, storyboard] = await Promise.all([
+      getTvGateStatus(jobId),
+      listTvConcepts(jobId),
+      getTvStoryboard(jobId),
+    ]);
+    setTvGateState(gate);
+    setTvConcepts(concepts.concepts);
+    setTvStoryboardShots(storyboard.shots);
+  }, []);
+
+  useEffect(() => {
+    if (!createdJob || createdJob.mode !== "tv") {
+      setTvGateState(null);
+      setTvConcepts([]);
+      setTvStoryboardShots([]);
+      return;
+    }
+    refreshTvWorkflow(createdJob.id).catch(() => {});
+  }, [createdJob, refreshTvWorkflow]);
+
+  async function handleGenerateTvConcepts() {
+    if (!createdJob) {
+      return;
+    }
+    setError(null);
+    setIsTvBusy(true);
+    try {
+      const generated = await generateTvConcepts(createdJob.id);
+      setTvConcepts(generated.concepts);
+      await refreshTvWorkflow(createdJob.id);
+    } catch (tvError) {
+      setError(summarizeError(tvError));
+    } finally {
+      setIsTvBusy(false);
+    }
+  }
+
+  async function handleSelectTvConcept(conceptId: string) {
+    if (!createdJob) {
+      return;
+    }
+    setError(null);
+    setIsTvBusy(true);
+    try {
+      await selectTvConcept(createdJob.id, conceptId);
+      await refreshTvWorkflow(createdJob.id);
+    } catch (tvError) {
+      setError(summarizeError(tvError));
+    } finally {
+      setIsTvBusy(false);
+    }
+  }
+
+  async function handleGenerateTvStoryboard() {
+    if (!createdJob) {
+      return;
+    }
+    setError(null);
+    setIsTvBusy(true);
+    try {
+      const generated = await generateTvStoryboard(createdJob.id);
+      setTvStoryboardShots(generated.shots);
+      await refreshTvWorkflow(createdJob.id);
+    } catch (tvError) {
+      setError(summarizeError(tvError));
+    } finally {
+      setIsTvBusy(false);
+    }
+  }
+
+  async function handleApproveTvStoryboard(approved: boolean) {
+    if (!createdJob) {
+      return;
+    }
+    setError(null);
+    setIsTvBusy(true);
+    try {
+      await approveTvStoryboard(createdJob.id, approved);
+      await refreshTvWorkflow(createdJob.id);
+    } catch (tvError) {
+      setError(summarizeError(tvError));
+    } finally {
+      setIsTvBusy(false);
+    }
   }
 
   async function handleUpload() {
@@ -238,6 +339,9 @@ export function CreateJobWorkbench() {
     setError(null);
     setCreatedJob(null);
     setPipelineResult(null);
+    setTvGateState(null);
+    setTvConcepts([]);
+    setTvStoryboardShots([]);
 
     let resolvedImageUrl = form.product_image_url.trim();
     if (!resolvedImageUrl && selectedFile) {
@@ -286,6 +390,9 @@ export function CreateJobWorkbench() {
 
       const created = await createJob(payload);
       setCreatedJob(created);
+      if (created.mode === "tv") {
+        await refreshTvWorkflow(created.id);
+      }
 
       if (form.auto_run_local) {
         setIsRunning(true);
@@ -686,6 +793,114 @@ export function CreateJobWorkbench() {
             </p>
           )}
         </div>
+
+        {createdJob?.mode === "tv" && (
+          <div className="status-box">
+            <p className="status-title">TV Gate Flow</p>
+            <p className="caption" style={{ margin: 0 }}>
+              {tvGateState
+                ? `Ready for render: ${tvGateState.ready_for_render ? "yes" : "no"}`
+                : "Loading TV workflow status..."}
+            </p>
+
+            <div className="tv-gate-grid">
+              <span className={`status-pill ${tvGateState?.concept_selected ? "is-ok" : "is-pending"}`}>
+                Concept: {tvGateState?.concept_selected ? "selected" : "pending"}
+              </span>
+              <span
+                className={`status-pill ${tvGateState?.storyboard_generated ? "is-ok" : "is-pending"}`}
+              >
+                Storyboard: {tvGateState?.storyboard_generated ? "generated" : "pending"}
+              </span>
+              <span
+                className={`status-pill ${tvGateState?.storyboard_approved ? "is-ok" : "is-pending"}`}
+              >
+                Approval: {tvGateState?.storyboard_approved ? "approved" : "pending"}
+              </span>
+            </div>
+
+            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleGenerateTvConcepts}
+                disabled={isTvBusy}
+              >
+                {isTvBusy ? "Working..." : "Generate Concepts"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleGenerateTvStoryboard}
+                disabled={isTvBusy || !tvGateState?.concept_selected}
+              >
+                {isTvBusy ? "Working..." : "Generate Storyboard"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => handleApproveTvStoryboard(true)}
+                disabled={isTvBusy || !tvGateState?.storyboard_generated}
+              >
+                Approve Storyboard
+              </button>
+            </div>
+
+            {tvConcepts.length > 0 && (
+              <div className="tv-list-block">
+                <p className="status-title" style={{ marginTop: 0 }}>
+                  Concepts
+                </p>
+                <div className="tv-list">
+                  {tvConcepts.map((concept) => (
+                    <div key={concept.concept_id} className="tv-item">
+                      <p className="tv-item-title">{concept.title}</p>
+                      <p className="hint">{concept.logline}</p>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleSelectTvConcept(concept.concept_id)}
+                        disabled={isTvBusy}
+                      >
+                        {tvGateState?.selected_concept_id === concept.concept_id
+                          ? "Selected"
+                          : "Select Concept"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {tvStoryboardShots.length > 0 && (
+              <div className="tv-list-block">
+                <p className="status-title" style={{ marginTop: 0 }}>
+                  Storyboard Shots
+                </p>
+                <div className="tv-list">
+                  {tvStoryboardShots.map((shot) => (
+                    <div key={shot.shot_id} className="tv-item">
+                      <p className="tv-item-title">
+                        {shot.shot_id} · {shot.duration_s}s
+                      </p>
+                      <p className="hint">{shot.purpose}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="cta-row" style={{ marginTop: "0.5rem" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => handleApproveTvStoryboard(false)}
+                    disabled={isTvBusy}
+                  >
+                    Unapprove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );

@@ -606,6 +606,47 @@ main {
   font-weight: 600;
 }
 
+.status-pill.is-ok {
+  border-color: rgba(55, 121, 91, 0.5);
+  background: rgba(164, 227, 192, 0.3);
+}
+
+.status-pill.is-pending {
+  border-color: rgba(185, 128, 90, 0.5);
+  background: rgba(231, 194, 168, 0.38);
+}
+
+.tv-gate-grid {
+  margin-top: 0.52rem;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.tv-list-block {
+  margin-top: 0.62rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.62rem;
+}
+
+.tv-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tv-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.44);
+  padding: 0.55rem;
+}
+
+.tv-item-title {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(10px);

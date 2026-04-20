@@ -89,6 +89,78 @@ export type LocalPipelineResponse = {
   video_generate_status: string;
 };
 
+export type TvGateStatus = {
+  job_id: string;
+  required: boolean;
+  concept_selected: boolean;
+  selected_concept_id: string | null;
+  storyboard_generated: boolean;
+  storyboard_approved: boolean;
+  ready_for_render: boolean;
+};
+
+export type TvConcept = {
+  concept_id: string;
+  title: string;
+  logline: string;
+  treatment: string;
+  audience_angle: string;
+  style_notes: string[];
+};
+
+export type TvConceptListResponse = {
+  job_id: string;
+  generated: boolean;
+  concepts: TvConcept[];
+};
+
+export type TvConceptGenerateResponse = {
+  job_id: string;
+  cached: boolean;
+  concepts: TvConcept[];
+};
+
+export type TvConceptSelectResponse = {
+  job_id: string;
+  concept_id: string;
+  concept_selected: boolean;
+  storyboard_generated: boolean;
+  storyboard_approved: boolean;
+  ready_for_render: boolean;
+};
+
+export type TvStoryboardShot = {
+  shot_id: string;
+  sequence: number;
+  duration_s: number;
+  purpose: string;
+  visual_description: string;
+  camera_intent: string;
+  transition_in: "opening" | "hard_cut" | "extend_from_previous";
+};
+
+export type TvStoryboardListResponse = {
+  job_id: string;
+  concept_id: string | null;
+  generated: boolean;
+  shots: TvStoryboardShot[];
+};
+
+export type TvStoryboardGenerateResponse = {
+  job_id: string;
+  concept_id: string;
+  cached: boolean;
+  shots: TvStoryboardShot[];
+};
+
+export type TvStoryboardApproveResponse = {
+  job_id: string;
+  storyboard_generated: boolean;
+  storyboard_approved: boolean;
+  concept_selected: boolean;
+  ready_for_render: boolean;
+};
+
 export type MediaUploadResponse = {
   url: string;
   path: string;
@@ -137,6 +209,94 @@ export async function runLocalPipeline(jobId: string): Promise<LocalPipelineResp
   }
 
   return (await response.json()) as LocalPipelineResponse;
+}
+
+export async function getTvGateStatus(jobId: string): Promise<TvGateStatus> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/tv/gates`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_gates_fetch_failed_${response.status}`);
+  }
+  return (await response.json()) as TvGateStatus;
+}
+
+export async function generateTvConcepts(jobId: string): Promise<TvConceptGenerateResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/concepts/generate`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_concepts_generate_failed_${response.status}`);
+  }
+  return (await response.json()) as TvConceptGenerateResponse;
+}
+
+export async function listTvConcepts(jobId: string): Promise<TvConceptListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/concepts`, {
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_concepts_list_failed_${response.status}`);
+  }
+  return (await response.json()) as TvConceptListResponse;
+}
+
+export async function selectTvConcept(
+  jobId: string,
+  conceptId: string
+): Promise<TvConceptSelectResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/concepts/select`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ concept_id: conceptId }),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_concept_select_failed_${response.status}`);
+  }
+  return (await response.json()) as TvConceptSelectResponse;
+}
+
+export async function generateTvStoryboard(jobId: string): Promise<TvStoryboardGenerateResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/storyboard/generate`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_storyboard_generate_failed_${response.status}`);
+  }
+  return (await response.json()) as TvStoryboardGenerateResponse;
+}
+
+export async function getTvStoryboard(jobId: string): Promise<TvStoryboardListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/storyboard`, {
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_storyboard_fetch_failed_${response.status}`);
+  }
+  return (await response.json()) as TvStoryboardListResponse;
+}
+
+export async function approveTvStoryboard(
+  jobId: string,
+  approved: boolean
+): Promise<TvStoryboardApproveResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/storyboard/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved }),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `tv_storyboard_approve_failed_${response.status}`);
+  }
+  return (await response.json()) as TvStoryboardApproveResponse;
 }
 
 export function uploadProductImage(
