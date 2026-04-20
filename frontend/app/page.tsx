@@ -3,39 +3,9 @@ import Link from "next/link";
 import { OptimizedVideo } from "@/components/optimized-video";
 import { homePageKeywords } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
+import { homeLibraryVideos } from "@/lib/video-library";
 
 export default function HomePage() {
-  const referenceLibrary = [
-    {
-      id: "clip_ugc",
-      title: "UGC Pulse Cut",
-      mode: "Mode A - UGC",
-      src: "/hero-bg-lite.webm",
-      poster: "/hero-poster.jpg",
-    },
-    {
-      id: "clip_narrative",
-      title: "Narrative Arc Reel",
-      mode: "Mode B - Professional",
-      src: "/hero-bg-2-lite.webm",
-      poster: "/hero-poster.jpg",
-    },
-    {
-      id: "clip_tv",
-      title: "TV Scene Sequence",
-      mode: "Mode C - TV",
-      src: "/hero-bg-lite.webm",
-      poster: "/hero-poster.jpg",
-    },
-    {
-      id: "clip_variation",
-      title: "Variant Playground",
-      mode: "Mode Lab",
-      src: "/hero-bg-2-lite.webm",
-      poster: "/hero-poster.jpg",
-    },
-  ];
-
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -66,12 +36,11 @@ export default function HomePage() {
         <div className="hero-grid-overlay" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-main home-hero-main reveal">
-            <p className="eyebrow">AI Video Ad Platform</p>
             <h1>Image in. Story out. Ads ready for spend.</h1>
             <p>
               Pic2Ads turns one product photo into high-converting video ads across UGC, narrative
-              creator formats, and TV-style campaign cuts. Seedance 2.0 powers the execution path
-              with extend-native continuity where it matters.
+              creator formats, and TV-style campaign cuts with continuity-safe generation where it
+              matters.
             </p>
             <div className="cta-row">
               <Link className="btn btn-accent" href="/create">
@@ -82,7 +51,7 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="hero-anchors">
-              <span>Seedance 2.0 Routing</span>
+              <span>Pic2Ads Render Routing</span>
               <span>Extend-native continuity</span>
               <span>Segment-level operator control</span>
             </div>
@@ -148,11 +117,11 @@ export default function HomePage() {
           </p>
         </div>
         <div className="library-track">
-          {referenceLibrary.map((clip, index) => (
+          {homeLibraryVideos.map((clip) => (
             <article key={clip.id} className="library-item">
-              <OptimizedVideo src={clip.src} poster={clip.poster} autoPlayInView={index === 0} />
+              <OptimizedVideo src={clip.src} poster={clip.poster} />
               <div className="library-meta">
-                <p>{clip.mode}</p>
+                <p>{clip.tag}</p>
                 <h3>{clip.title}</h3>
               </div>
             </article>
@@ -209,9 +178,9 @@ export default function HomePage() {
       <section className="split-feature reveal delay-2">
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Execution Logic</p>
-          <h2 className="flush-title">Seedance-first economics, premium when needed.</h2>
+          <h2 className="flush-title">Efficiency-first economics, premium when needed.</h2>
           <ul className="line-list">
-            <li>Seedance 2.0 default routing for cost-efficient throughput</li>
+            <li>Default routing for cost-efficient throughput</li>
             <li>Extend chains for continuous shots beyond 15 seconds</li>
             <li>Cut-chain strategy for deliberate scene shifts</li>
             <li>Manifest-level output visibility for production QA</li>

@@ -11,7 +11,7 @@ export const metadata: Metadata = buildMetadata({
   keywords: [
     "ai video ad workspace",
     "create ugc ad job",
-    "seedance job builder",
+    "pic2ads job builder",
     "product to video workflow",
   ],
 });

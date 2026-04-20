@@ -1,6 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
+import { ModeVideoGallery } from "@/components/mode-video-gallery";
 import { buildMetadata } from "@/lib/seo";
+import { tvModeVideos } from "@/lib/video-library";
 
 export const metadata: Metadata = buildMetadata({
   title: "AI TV Commercial Generator | Pic2Ads",
@@ -19,7 +21,7 @@ export default function TvCommercialAiPage() {
   return (
     <main>
       <section className="section story-shell reveal">
-        <p className="eyebrow">Mode C · TV Commercial</p>
+        <p className="eyebrow">Mode C - TV Commercial</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
           Multi-shot commercial composition with operator control.
         </h1>
@@ -40,12 +42,18 @@ export default function TvCommercialAiPage() {
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Technical baseline</p>
           <ul className="line-list">
-            <li>Seedance-first routing for lower blended generation cost</li>
+            <li>Efficiency-first routing for lower blended generation cost</li>
             <li>Fallback-ready architecture for provider instability</li>
             <li>Manifest output gives transparent shot completion states</li>
           </ul>
         </article>
       </section>
+      <ModeVideoGallery
+        eyebrow="TV Gallery"
+        title="TV commercial references in your workspace"
+        intro="Your TV AD clips and cinematic alternatives are now directly available inside Mode C for visual guidance."
+        items={tvModeVideos}
+      />
     </main>
   );
 }

@@ -8,7 +8,7 @@ const primaryKeywords = [
   "ugc ad creator ai",
   "professional ugc video ads",
   "ai tv commercial maker",
-  "seedance 2.0 video ads",
+  "pic2ads video ads",
   "short form ad video generator",
   "performance marketing video ads",
   "ecommerce ad creative automation",

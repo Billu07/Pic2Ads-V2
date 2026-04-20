@@ -30,8 +30,8 @@ export default function PricingPage() {
           Credits mapped to production complexity
         </h1>
         <p className="section-intro">
-          Credits map to render complexity. Keep cost low with Seedance-first generation and only
-          use premium cinematic routes where the shot requires it.
+          Credits map to render complexity. Keep cost low with efficient generation and only use
+          premium cinematic routes where the shot requires it.
         </p>
       </section>
       <section className="pricing-grid reveal delay-1">

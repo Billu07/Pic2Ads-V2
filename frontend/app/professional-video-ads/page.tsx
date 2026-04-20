@@ -1,6 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 
+import { ModeVideoGallery } from "@/components/mode-video-gallery";
 import { buildMetadata } from "@/lib/seo";
+import { proModeVideos } from "@/lib/video-library";
 
 export const metadata: Metadata = buildMetadata({
   title: "Professional UGC Video Ads | Pic2Ads",
@@ -10,7 +12,7 @@ export const metadata: Metadata = buildMetadata({
   keywords: [
     "professional ugc ads",
     "ai narrative video ads",
-    "seedance extend chain ads",
+    "extend chain narrative ads",
     "creator style commercial videos",
   ],
 });
@@ -19,7 +21,7 @@ export default function ProfessionalVideoAdsPage() {
   return (
     <main>
       <section className="section story-shell reveal">
-        <p className="eyebrow">Mode B · Professional UGC</p>
+        <p className="eyebrow">Mode B - Professional UGC</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
           Story-led creator ads with continuity intelligence.
         </h1>
@@ -32,7 +34,7 @@ export default function ProfessionalVideoAdsPage() {
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Narrative advantage</p>
           <ul className="line-list">
-            <li>Higher retention from friction → resolution structure</li>
+            <li>Higher retention from friction - resolution structure</li>
             <li>30-second arcs without abrupt visual drift</li>
             <li>Segment-level intervention for controlled regeneration</li>
           </ul>
@@ -46,6 +48,12 @@ export default function ProfessionalVideoAdsPage() {
           </ul>
         </article>
       </section>
+      <ModeVideoGallery
+        eyebrow="Professional Gallery"
+        title="Narrative and continuity references"
+        intro="Professional UGC mode now surfaces your landscape and cinematic clips for faster content direction."
+        items={proModeVideos}
+      />
     </main>
   );
 }

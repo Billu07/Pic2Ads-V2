@@ -59,8 +59,11 @@ export default function RootLayout({
           </header>
           {children}
           <footer className="footer">
-            Pic2Ads at {siteConfig.domain} | Built for cinematic performance creative with Seedance
-            2.0.
+            Pic2Ads at {siteConfig.domain} | A sister concern of{" "}
+            <a href="https://autolinium.com" target="_blank" rel="noreferrer">
+              Autolinium
+            </a>
+            .
           </footer>
         </div>
       </body>
