@@ -523,6 +523,7 @@ main {
   content: "";
   position: absolute;
   inset: 0;
+  pointer-events: none;
   border-radius: inherit;
   border: 1px solid transparent;
   background: linear-gradient(120deg, rgba(37, 183, 168, 0.5), rgba(213, 176, 110, 0.3)) border-box;

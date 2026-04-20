@@ -58,7 +58,7 @@ export default function HomePage() {
       <section className="full-bleed-hero home-hero">
         <OptimizedVideo
           className="hero-video-bg"
-          src="/hero-bg-lite.webm"
+          src="/hero-bg-loop.webm"
           poster="/hero-poster.jpg"
           priority
         />
