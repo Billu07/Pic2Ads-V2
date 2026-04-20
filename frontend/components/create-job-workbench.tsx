@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -427,13 +428,13 @@ export function CreateJobWorkbench() {
   }
 
   return (
-    <div className="workspace">
-      <section className="panel reveal">
-        <p className="eyebrow">Creative Workspace</p>
-        <h2 style={{ margin: 0 }}>Build your next job</h2>
-        <p className="caption">{modePreset.note}</p>
+    <div className="workspace reveal active">
+      <section className="panel">
+        <p className="eyebrow" style={{ color: 'var(--accent)', fontWeight: 800 }}>Generation Engine</p>
+        <h2 style={{ margin: '0 0 0.5rem', fontSize: '2.5rem' }}>Create New Job</h2>
+        <p className="caption" style={{ fontSize: '1rem', opacity: 0.7 }}>{modePreset.note}</p>
 
-        <div className="mode-switch" style={{ marginTop: "0.6rem" }}>
+        <div className="mode-switch" style={{ margin: "2rem 0" }}>
           {(["ugc", "pro_arc", "tv"] as const).map((mode) => (
             <button
               type="button"
@@ -446,7 +447,7 @@ export function CreateJobWorkbench() {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: "0.95rem" }}>
+        <form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
           <div className="field-grid">
             <div className="field">
               <label htmlFor="product_name">Product Name</label>
@@ -476,6 +477,7 @@ export function CreateJobWorkbench() {
               <label htmlFor="product_upload">Or Upload Product Image</label>
               <div
                 className={`dropzone ${isDraggingFile ? "active" : ""}`}
+                style={{ padding: '3rem', borderStyle: 'dashed', borderWidth: '2px', borderRadius: '24px' }}
                 onDragEnter={(event) => {
                   event.preventDefault();
                   setIsDraggingFile(true);
@@ -490,9 +492,10 @@ export function CreateJobWorkbench() {
                 }}
                 onDrop={onDropFile}
               >
-                Drag and drop an image here, or choose a file.
+                <div style={{ fontSize: '1.2rem', color: 'var(--cream)', marginBottom: '0.5rem' }}>Drop your product shot here</div>
+                <div style={{ opacity: 0.5 }}>High-res PNG or JPEG preferred</div>
               </div>
-              <div className="upload-row">
+              <div className="upload-row" style={{ marginTop: '1rem' }}>
                 <input
                   id="product_upload"
                   type="file"
@@ -503,40 +506,35 @@ export function CreateJobWorkbench() {
                 <button
                   type="button"
                   className="btn btn-secondary"
+                  style={{ whiteSpace: 'nowrap' }}
                   onClick={handleUpload}
                   disabled={isUploading || !selectedFile}
                 >
-                  {isUploading ? "Uploading..." : "Upload"}
+                  {isUploading ? "Uploading..." : "Upload File"}
                 </button>
               </div>
               {isUploading && (
-                <div className="upload-progress">
-                  <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }} />
+                <div className="upload-progress" style={{ marginTop: '1rem', height: '6px' }}>
+                  <div className="upload-progress-fill" style={{ width: `${uploadProgress}%`, background: 'var(--accent)' }} />
                 </div>
               )}
-              <p className="hint">
-                Requires frontend server env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and
-                storage bucket.
-              </p>
-              {uploadError && <p className="hint">Upload error: {uploadError}</p>}
-              {uploadResult && (
-                <p className="hint">
-                  Uploaded to `{uploadResult.bucket}` at `{uploadResult.path}`.
-                </p>
-              )}
+              {uploadError && <p className="hint" style={{ color: '#ff4b4b', marginTop: '0.5rem' }}>{uploadError}</p>}
+              {uploadResult && <p className="hint" style={{ color: 'var(--mint)', marginTop: '0.5rem' }}>File ready: {uploadResult.path.split('/').pop()}</p>}
+              
               {(localPreviewUrl || form.product_image_url) && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={localPreviewUrl ?? form.product_image_url}
-                  alt="Product preview"
-                  className="product-preview"
-                  loading="lazy"
-                />
+                <div style={{ marginTop: '2rem', position: 'relative', width: '100%', height: '300px', borderRadius: '24px', overflow: 'hidden', border: '1px solid var(--line-strong)' }}>
+                  <Image
+                    src={localPreviewUrl ?? form.product_image_url}
+                    alt="Product preview"
+                    fill
+                    style={{ objectFit: 'contain', padding: '1rem' }}
+                  />
+                </div>
               )}
             </div>
 
             <div className="field">
-              <label htmlFor="duration_s">Ad Duration (seconds)</label>
+              <label htmlFor="duration_s">Ad Duration (s)</label>
               <input
                 id="duration_s"
                 type="number"
@@ -550,7 +548,7 @@ export function CreateJobWorkbench() {
               />
             </div>
             <div className="field">
-              <label htmlFor="aspect">Deliverable Aspect</label>
+              <label htmlFor="aspect">Aspect Ratio</label>
               <select
                 id="aspect"
                 className="select"
@@ -559,14 +557,14 @@ export function CreateJobWorkbench() {
                   setForm((prev) => ({ ...prev, aspect: event.target.value as DeliverableAspect }))
                 }
               >
-                <option value="9:16">9:16 (Reels/TikTok)</option>
-                <option value="1:1">1:1 (Feed)</option>
-                <option value="16:9">16:9 (YouTube/Landing)</option>
+                <option value="9:16">9:16 Vertical</option>
+                <option value="1:1">1:1 Square</option>
+                <option value="16:9">16:9 Landscape</option>
               </select>
             </div>
 
             <div className="field">
-              <label htmlFor="deliverable_duration">Deliverable Duration</label>
+              <label htmlFor="deliverable_duration">Output Duration</label>
               <input
                 id="deliverable_duration"
                 type="number"
@@ -583,29 +581,30 @@ export function CreateJobWorkbench() {
               />
             </div>
             <div className="field">
-              <label htmlFor="brand_id">Brand ID (optional)</label>
+              <label htmlFor="brand_id">Brand Reference</label>
               <input
                 id="brand_id"
                 className="input"
                 value={form.brand_id}
                 onChange={(event) => setForm((prev) => ({ ...prev, brand_id: event.target.value }))}
-                placeholder="brand_internal_001"
+                placeholder="Optional ID"
               />
             </div>
 
             <div className="field field-full">
-              <label htmlFor="brief">Creative Brief (optional)</label>
+              <label htmlFor="brief">Creative Brief</label>
               <textarea
                 id="brief"
                 className="textarea"
+                style={{ minHeight: '150px' }}
                 value={form.brief}
                 onChange={(event) => setForm((prev) => ({ ...prev, brief: event.target.value }))}
-                placeholder="Audience, value proposition, mood, and CTA preferences."
+                placeholder="Describe your audience and mood..."
               />
             </div>
 
             <div className="field">
-              <label htmlFor="creative_tone">Creative Tone</label>
+              <label htmlFor="creative_tone">Tone</label>
               <input
                 id="creative_tone"
                 className="input"
@@ -613,7 +612,6 @@ export function CreateJobWorkbench() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, creative_tone: event.target.value }))
                 }
-                placeholder="raw and relatable"
               />
             </div>
             <div className="field">
@@ -636,7 +634,6 @@ export function CreateJobWorkbench() {
                 ))}
               </select>
             </div>
-
             <div className="field">
               <label htmlFor="offer_angle">Offer Angle</label>
               <select
@@ -677,9 +674,8 @@ export function CreateJobWorkbench() {
                 ))}
               </select>
             </div>
-
             <div className="field">
-              <label htmlFor="must_include_csv">Must Include (comma separated)</label>
+              <label htmlFor="must_include_csv">Must Include (CSV)</label>
               <input
                 id="must_include_csv"
                 className="input"
@@ -687,11 +683,11 @@ export function CreateJobWorkbench() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, must_include_csv: event.target.value }))
                 }
-                placeholder="natural handheld cadence, one tactile product beat"
+                placeholder="natural handheld cadence..."
               />
             </div>
             <div className="field">
-              <label htmlFor="must_avoid_csv">Must Avoid (comma separated)</label>
+              <label htmlFor="must_avoid_csv">Must Avoid (CSV)</label>
               <input
                 id="must_avoid_csv"
                 className="input"
@@ -699,208 +695,171 @@ export function CreateJobWorkbench() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, must_avoid_csv: event.target.value }))
                 }
-                placeholder="over-polished ad language, fake urgency"
+                placeholder="fake urgency, over-polished..."
               />
             </div>
           </div>
 
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.45rem",
-              marginTop: "0.75rem",
-              fontSize: "0.86rem",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.auto_run_local}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, auto_run_local: event.target.checked }))
-              }
-            />
-            Auto-run local pipeline after creation
-          </label>
+          <div style={{ marginTop: '1.5rem' }}>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                fontSize: "0.85rem",
+                opacity: 0.7,
+                cursor: "pointer"
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.auto_run_local}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, auto_run_local: event.target.checked }))
+                }
+              />
+              Auto-run local pipeline after creation
+            </label>
+          </div>
 
-          <div className="cta-row">
+          <div className="cta-row" style={{ marginTop: '3rem' }}>
             <button
               type="submit"
               className="btn btn-accent"
+              style={{ paddingInline: '4rem' }}
               disabled={isSubmitting || isRunning || isUploading}
             >
-              {isSubmitting ? "Creating..." : "Create Job"}
+              {isSubmitting ? "Orchestrating..." : "Generate Creative"}
             </button>
-            {createdJob && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={triggerPipeline}
-                disabled={isUploading}
-              >
-                {isRunning ? "Running..." : "Run Pipeline"}
-              </button>
-            )}
           </div>
 
-          {error && <p className="hint">Error: {error}</p>}
+          {error && <div style={{ marginTop: '1.5rem', color: '#ff4b4b', fontSize: '0.9rem', padding: '1rem', background: 'rgba(255, 75, 75, 0.1)', borderRadius: '12px', border: '1px solid rgba(255, 75, 75, 0.2)' }}>{error}</div>}
         </form>
       </section>
 
-      <aside className="panel reveal delay-1">
-        <p className="eyebrow">Run State</p>
-        <h3 style={{ margin: "0 0 0.3rem", fontSize: "1.5rem" }}>Production Snapshot</h3>
-        <p className="caption">
-          This workspace initializes a backend job and optionally starts the local pipeline runner.
-        </p>
+      <aside>
+        <div className="panel reveal active" style={{ position: 'sticky', top: '100px' }}>
+          <p className="eyebrow">Real-time Status</p>
+          <h3 style={{ margin: "0 0 1.5rem", fontSize: "1.8rem" }}>Production</h3>
 
-        <div className="status-box">
-          <p className="status-title">Mode</p>
-          <p className="caption" style={{ margin: 0 }}>
-            {modePreset.label}
-          </p>
-        </div>
+          <div className="status-box" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)', padding: '1.5rem', borderRadius: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <span style={{ opacity: 0.6 }}>Job ID</span>
+              <span style={{ fontWeight: 700 }}>{createdJob ? createdJob.id.slice(0, 8) : "None"}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <span style={{ opacity: 0.6 }}>Pipeline</span>
+              <span style={{ color: isRunning ? 'var(--accent)' : 'inherit' }}>{isRunning ? "Running..." : "Idle"}</span>
+            </div>
+            
+            {pipelineResult && (
+               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
+                 <p className="hint" style={{ color: 'var(--mint)' }}>✓ Video Generated</p>
+                 <p className="hint" style={{ fontSize: '0.75rem', opacity: 0.5 }}>Intel: {pipelineResult.product_intel_status} | Brand: {pipelineResult.brand_strategy_status}</p>
+               </div>
+            )}
+          </div>
 
-        <div className="status-box">
-          <p className="status-title">Job Creation</p>
-          <p className="caption" style={{ margin: 0 }}>
-            {createdJob ? `Created: ${createdJob.id}` : "Awaiting submit"}
-          </p>
+          {createdJob && !isRunning && !pipelineResult && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '1.5rem' }}
+              onClick={triggerPipeline}
+            >
+              Run Local Pipeline
+            </button>
+          )}
+
+          {createdJob?.mode === "tv" && (
+            <div className="status-box" style={{ marginTop: '1.5rem', background: 'rgba(14, 165, 233, 0.03)', border: '1px solid rgba(14, 165, 233, 0.1)', padding: '1.5rem', borderRadius: '20px' }}>
+              <p className="status-title" style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--accent)' }}>TV Workflow</p>
+              
+              <div className="tv-gate-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                  <span style={{ opacity: 0.6 }}>Concept</span>
+                  <span style={{ color: tvGateState?.concept_selected ? 'var(--mint)' : 'inherit' }}>{tvGateState?.concept_selected ? "Selected" : "Pending"}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                  <span style={{ opacity: 0.6 }}>Storyboard</span>
+                  <span style={{ color: tvGateState?.storyboard_generated ? 'var(--mint)' : 'inherit' }}>{tvGateState?.storyboard_generated ? "Ready" : "Pending"}</span>
+                </div>
+              </div>
+
+              <div className="cta-row" style={{ marginTop: '1.5rem', flexDirection: 'column', gap: '0.75rem' }}>
+                <button type="button" className="btn btn-secondary" style={{ width: '100%', fontSize: '0.8rem', padding: '0.7rem' }} onClick={handleGenerateTvConcepts} disabled={isTvBusy}>
+                  {isTvBusy ? "Generating..." : "Generate Concepts"}
+                </button>
+                {tvGateState?.concept_selected && (
+                  <button type="button" className="btn btn-secondary" style={{ width: '100%', fontSize: '0.8rem', padding: '0.7rem' }} onClick={handleGenerateTvStoryboard} disabled={isTvBusy}>
+                    Generate Storyboard
+                  </button>
+                )}
+                {tvGateState?.storyboard_generated && (
+                  <button type="button" className="btn btn-accent" style={{ width: '100%', fontSize: '0.8rem', padding: '0.7rem' }} onClick={() => handleApproveTvStoryboard(true)} disabled={isTvBusy}>
+                    Approve Storyboard
+                  </button>
+                )}
+              </div>
+
+              {tvConcepts.length > 0 && (
+                <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--line)' }}>
+                  <p className="status-title" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>Available Concepts</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {tvConcepts.map((concept) => (
+                      <div key={concept.concept_id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{concept.title}</p>
+                        <p className="hint" style={{ fontSize: '0.75rem', marginBottom: '0.75rem' }}>{concept.logline}</p>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }}
+                          onClick={() => handleSelectTvConcept(concept.concept_id)}
+                          disabled={isTvBusy}
+                        >
+                          {tvGateState?.selected_concept_id === concept.concept_id ? "Selected" : "Select"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tvStoryboardShots.length > 0 && (
+                <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--line)' }}>
+                  <p className="status-title" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>Storyboard Shots</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {tvStoryboardShots.map((shot) => (
+                      <div key={shot.shot_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', opacity: 0.8 }}>
+                        <span>Shot {shot.shot_id}</span>
+                        <span>{shot.duration_s}s</span>
+                      </div>
+                    ))}
+                    <div className="cta-row" style={{ marginTop: '1rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ width: '100%', fontSize: '0.7rem', padding: '0.5rem' }}
+                        onClick={() => handleApproveTvStoryboard(false)}
+                        disabled={isTvBusy}
+                      >
+                        Reset Approval
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {createdJob && (
-            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
-              <Link href={`/jobs/${createdJob.id}`} className="btn btn-primary">
-                Open Manifest
+            <div style={{ marginTop: '2rem' }}>
+              <Link href={`/jobs/${createdJob.id}`} className="btn btn-secondary" style={{ width: '100%', display: 'inline-flex', background: 'rgba(255,255,255,0.05)' }}>
+                Open Full Manifest
               </Link>
             </div>
           )}
         </div>
-
-        <div className="status-box">
-          <p className="status-title">Pipeline</p>
-          <p className="caption" style={{ margin: 0 }}>
-            {pipelineResult
-              ? `Video status: ${pipelineResult.video_generate_status}`
-              : isRunning
-                ? "Running local pipeline..."
-                : "Not started"}
-          </p>
-          {pipelineResult && (
-            <p className="hint" style={{ marginTop: "0.35rem" }}>
-              Intel: {pipelineResult.product_intel_status} | Brand:{" "}
-              {pipelineResult.brand_strategy_status} | Casting: {pipelineResult.casting_status} |
-              Scripts: {pipelineResult.script_status} | TV gates: {pipelineResult.tv_gate_status} |
-              Duration plan: {pipelineResult.duration_plan_status}
-            </p>
-          )}
-        </div>
-
-        {createdJob?.mode === "tv" && (
-          <div className="status-box">
-            <p className="status-title">TV Gate Flow</p>
-            <p className="caption" style={{ margin: 0 }}>
-              {tvGateState
-                ? `Ready for render: ${tvGateState.ready_for_render ? "yes" : "no"}`
-                : "Loading TV workflow status..."}
-            </p>
-
-            <div className="tv-gate-grid">
-              <span className={`status-pill ${tvGateState?.concept_selected ? "is-ok" : "is-pending"}`}>
-                Concept: {tvGateState?.concept_selected ? "selected" : "pending"}
-              </span>
-              <span
-                className={`status-pill ${tvGateState?.storyboard_generated ? "is-ok" : "is-pending"}`}
-              >
-                Storyboard: {tvGateState?.storyboard_generated ? "generated" : "pending"}
-              </span>
-              <span
-                className={`status-pill ${tvGateState?.storyboard_approved ? "is-ok" : "is-pending"}`}
-              >
-                Approval: {tvGateState?.storyboard_approved ? "approved" : "pending"}
-              </span>
-            </div>
-
-            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleGenerateTvConcepts}
-                disabled={isTvBusy}
-              >
-                {isTvBusy ? "Working..." : "Generate Concepts"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleGenerateTvStoryboard}
-                disabled={isTvBusy || !tvGateState?.concept_selected}
-              >
-                {isTvBusy ? "Working..." : "Generate Storyboard"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => handleApproveTvStoryboard(true)}
-                disabled={isTvBusy || !tvGateState?.storyboard_generated}
-              >
-                Approve Storyboard
-              </button>
-            </div>
-
-            {tvConcepts.length > 0 && (
-              <div className="tv-list-block">
-                <p className="status-title" style={{ marginTop: 0 }}>
-                  Concepts
-                </p>
-                <div className="tv-list">
-                  {tvConcepts.map((concept) => (
-                    <div key={concept.concept_id} className="tv-item">
-                      <p className="tv-item-title">{concept.title}</p>
-                      <p className="hint">{concept.logline}</p>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => handleSelectTvConcept(concept.concept_id)}
-                        disabled={isTvBusy}
-                      >
-                        {tvGateState?.selected_concept_id === concept.concept_id
-                          ? "Selected"
-                          : "Select Concept"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {tvStoryboardShots.length > 0 && (
-              <div className="tv-list-block">
-                <p className="status-title" style={{ marginTop: 0 }}>
-                  Storyboard Shots
-                </p>
-                <div className="tv-list">
-                  {tvStoryboardShots.map((shot) => (
-                    <div key={shot.shot_id} className="tv-item">
-                      <p className="tv-item-title">
-                        {shot.shot_id} - {shot.duration_s}s
-                      </p>
-                      <p className="hint">{shot.purpose}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="cta-row" style={{ marginTop: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => handleApproveTvStoryboard(false)}
-                    disabled={isTvBusy}
-                  >
-                    Unapprove
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </aside>
     </div>
   );
