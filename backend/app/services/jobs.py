@@ -27,6 +27,8 @@ class JobService:
                 "tv": {
                     "concept_selected": False,
                     "selected_concept_id": None,
+                    "storyboard_concept_id": None,
+                    "storyboard": [],
                     "storyboard_approved": False,
                     "concepts": [],
                 }
@@ -192,6 +194,7 @@ class JobService:
                 "mode": str(row["mode"]),
                 "concept_selected": True,
                 "selected_concept_id": None,
+                "storyboard_generated": True,
                 "storyboard_approved": True,
                 "ready_for_render": True,
                 "required": False,
@@ -203,12 +206,23 @@ class JobService:
         selected_concept_id = tv_state.get("selected_concept_id")
         if not isinstance(selected_concept_id, str):
             selected_concept_id = None
+        storyboard_concept_id = tv_state.get("storyboard_concept_id")
+        if not isinstance(storyboard_concept_id, str):
+            storyboard_concept_id = None
+        storyboard = tv_state.get("storyboard")
+        storyboard_generated = (
+            isinstance(storyboard, list)
+            and len(storyboard) > 0
+            and selected_concept_id is not None
+            and storyboard_concept_id == selected_concept_id
+        )
         return {
             "mode": "tv",
             "concept_selected": concept_selected,
             "selected_concept_id": selected_concept_id,
+            "storyboard_generated": storyboard_generated,
             "storyboard_approved": storyboard_approved,
-            "ready_for_render": concept_selected and storyboard_approved,
+            "ready_for_render": concept_selected and storyboard_generated and storyboard_approved,
             "required": True,
         }
 
@@ -247,9 +261,18 @@ class JobService:
                     update public.ad_job
                     set workflow_state = jsonb_set(
                       jsonb_set(
-                        jsonb_set(coalesce(workflow_state, '{}'::jsonb),
-                                  '{tv,concepts}', %s::jsonb, true),
-                        '{tv,concept_selected}', 'false'::jsonb, true
+                        jsonb_set(
+                          jsonb_set(
+                            jsonb_set(
+                              jsonb_set(coalesce(workflow_state, '{}'::jsonb),
+                                        '{tv,concepts}', %s::jsonb, true),
+                              '{tv,concept_selected}', 'false'::jsonb, true
+                            ),
+                            '{tv,storyboard}', '[]'::jsonb, true
+                          ),
+                          '{tv,storyboard_concept_id}', 'null'::jsonb, true
+                        ),
+                        '{tv,storyboard_approved}', 'false'::jsonb, true
                       ),
                       '{tv,selected_concept_id}', 'null'::jsonb, true
                     )
@@ -281,9 +304,15 @@ class JobService:
                     update public.ad_job
                     set workflow_state = jsonb_set(
                       jsonb_set(
-                        jsonb_set(coalesce(workflow_state, '{}'::jsonb),
-                                  '{tv,selected_concept_id}', to_jsonb(%s::text), true),
-                        '{tv,concept_selected}', 'true'::jsonb, true
+                        jsonb_set(
+                          jsonb_set(
+                            jsonb_set(coalesce(workflow_state, '{}'::jsonb),
+                                      '{tv,selected_concept_id}', to_jsonb(%s::text), true),
+                            '{tv,concept_selected}', 'true'::jsonb, true
+                          ),
+                          '{tv,storyboard}', '[]'::jsonb, true
+                        ),
+                        '{tv,storyboard_concept_id}', 'null'::jsonb, true
                       ),
                       '{tv,storyboard_approved}', 'false'::jsonb, true
                     )
@@ -297,6 +326,57 @@ class JobService:
         if not updated:
             return False, "job_not_found"
         return True, None
+
+    def get_tv_storyboard(self, job_id: str) -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select mode::text as mode, workflow_state
+                    from public.ad_job
+                    where id = %s
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        if str(row["mode"]) != "tv":
+            return {"concept_id": None, "shots": []}
+        state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
+        tv_state = self._extract_tv_state(state)
+        concept_id = tv_state.get("storyboard_concept_id")
+        if not isinstance(concept_id, str):
+            concept_id = None
+        shots = tv_state.get("storyboard")
+        if not isinstance(shots, list):
+            shots = []
+        return {"concept_id": concept_id, "shots": [s for s in shots if isinstance(s, dict)]}
+
+    def set_tv_storyboard(self, job_id: str, *, concept_id: str, shots: list[dict[str, Any]]) -> bool:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    update public.ad_job
+                    set workflow_state = jsonb_set(
+                      jsonb_set(
+                        jsonb_set(
+                          coalesce(workflow_state, '{}'::jsonb),
+                          '{tv,storyboard}', %s::jsonb, true
+                        ),
+                        '{tv,storyboard_concept_id}', to_jsonb(%s::text), true
+                      ),
+                      '{tv,storyboard_approved}', 'false'::jsonb, true
+                    )
+                    where id = %s
+                      and mode = 'tv'
+                    """,
+                    (json.dumps(shots), concept_id, job_id),
+                )
+                updated = cur.rowcount > 0
+            conn.commit()
+        return updated
 
     def set_tv_storyboard_approved(self, job_id: str, approved: bool) -> bool:
         with get_db_connection() as conn:

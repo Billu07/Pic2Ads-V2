@@ -128,25 +128,62 @@ class DurationPlannerService:
 
     def _build_tv_unit(self, *, job_id: str, duration_s: int, scripts: list[ScriptVariant]) -> int:
         primary_script = scripts[0] if scripts else None
-        desired = primary_script.segment_count_hint if primary_script and primary_script.segment_count_hint else 4
-        segment_count = max(3, min(8, int(desired)))
-        duration_parts = self._split_duration_by_count(duration_s, segment_count=segment_count)
+        storyboard = job_service.get_tv_storyboard(job_id)
 
-        segments = [
-            SegmentCreateRequest(
-                order=idx,
-                duration_s=seg_dur,
-                prompt_seed=self._non_ugc_prompt_seed(
-                    mode="tv",
-                    script=primary_script,
-                    segment_index=idx,
-                    total_segments=len(duration_parts),
-                    segment_duration_s=seg_dur,
-                    pattern_hint="tv_shotlist",
-                ),
+        duration_parts: list[int]
+        shot_notes: list[str]
+        if storyboard and isinstance(storyboard.get("shots"), list) and len(storyboard["shots"]) > 0:
+            duration_parts = []
+            shot_notes = []
+            for shot in storyboard["shots"]:
+                if not isinstance(shot, dict):
+                    continue
+                raw_duration = shot.get("duration_s")
+                duration = int(raw_duration) if isinstance(raw_duration, int | float) else 5
+                duration = max(1, duration)
+                purpose = str(shot.get("purpose") or "")
+                visual = str(shot.get("visual_description") or "")
+                note = f"purpose={purpose}; visual={visual}"[:260]
+                while duration > 15:
+                    duration_parts.append(15)
+                    shot_notes.append(f"{note}; split_part=15")
+                    duration -= 15
+                duration_parts.append(duration)
+                shot_notes.append(note)
+            if not duration_parts:
+                duration_parts = self._split_segments(duration_s)
+                shot_notes = ["" for _ in duration_parts]
+            duration_parts = self._rebalance_to_total(duration_parts, target_total=duration_s)
+            if len(shot_notes) < len(duration_parts):
+                shot_notes.extend([""] * (len(duration_parts) - len(shot_notes)))
+            elif len(shot_notes) > len(duration_parts):
+                shot_notes = shot_notes[: len(duration_parts)]
+        else:
+            desired = primary_script.segment_count_hint if primary_script and primary_script.segment_count_hint else 4
+            segment_count = max(3, min(8, int(desired)))
+            duration_parts = self._split_duration_by_count(duration_s, segment_count=segment_count)
+            shot_notes = ["" for _ in duration_parts]
+
+        segments = []
+        for idx, seg_dur in enumerate(duration_parts):
+            prompt = self._non_ugc_prompt_seed(
+                mode="tv",
+                script=primary_script,
+                segment_index=idx,
+                total_segments=len(duration_parts),
+                segment_duration_s=seg_dur,
+                pattern_hint="tv_shotlist",
             )
-            for idx, seg_dur in enumerate(duration_parts)
-        ]
+            note = shot_notes[idx] if idx < len(shot_notes) else ""
+            if note:
+                prompt = f"{prompt} Storyboard shot note: {note}"[:1900]
+            segments.append(
+                SegmentCreateRequest(
+                    order=idx,
+                    duration_s=seg_dur,
+                    prompt_seed=prompt,
+                )
+            )
 
         created = render_unit_service.create_unit(
             job_id,
@@ -179,7 +216,41 @@ class DurationPlannerService:
                 value -= 15
             normalized.append(value)
         # Rebalance if normalization increased total parts unexpectedly.
-        return normalized
+        return self._rebalance_to_total(normalized, target_total=duration_s)
+
+    @staticmethod
+    def _rebalance_to_total(parts: list[int], *, target_total: int) -> list[int]:
+        if not parts:
+            return [min(15, max(1, target_total))]
+        out = [max(1, min(15, int(value))) for value in parts]
+        current = sum(out)
+        guard = 0
+        while current != target_total and guard < 500:
+            guard += 1
+            if current < target_total:
+                changed = False
+                for idx in range(len(out)):
+                    if out[idx] < 15:
+                        out[idx] += 1
+                        current += 1
+                        changed = True
+                        if current == target_total:
+                            break
+                if not changed:
+                    out.append(1)
+                    current += 1
+            else:
+                changed = False
+                for idx in range(len(out)):
+                    if out[idx] > 1:
+                        out[idx] -= 1
+                        current -= 1
+                        changed = True
+                        if current == target_total:
+                            break
+                if not changed:
+                    break
+        return out
 
     def _ugc_prompt_seed(
         self,

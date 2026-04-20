@@ -13,6 +13,7 @@ from app.models.creative import (
 )
 from app.models.product_intel import ProductIntelInput, ProductIntelOutput
 from app.models.scripts import ScreenwriterInput, ScreenwriterOutput
+from app.models.storyboard import TvStoryboardGenerateInput, TvStoryboardGenerateOutput
 
 
 class OpenAIClient:
@@ -324,6 +325,73 @@ class OpenAIClient:
         data = await self._post_responses(body=body, headers=headers)
         parsed = self._extract_json_output(data)
         return TvConceptGenerateOutput.model_validate(parsed)
+
+    async def tv_storyboard_from_context(
+        self, payload: TvStoryboardGenerateInput
+    ) -> TvStoryboardGenerateOutput:
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured.")
+
+        schema = TvStoryboardGenerateOutput.model_json_schema()
+        body: dict[str, Any] = {
+            "model": settings.openai_script_model,
+            "input": [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                "You are the Pic2Ads storyboard director.\n"
+                                "Convert the selected concept into a production storyboard shot list.\n"
+                                "Return strict JSON matching schema only.\n"
+                                "Shots must be 1-15 seconds each and ordered.\n"
+                                "No overlays, no on-screen text, no invented product claims.\n"
+                            ),
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                f"product_name={payload.product_name}\n"
+                                f"duration_s={payload.duration_s}\n"
+                                f"brief={payload.brief or 'none'}\n"
+                                f"selected_concept={json.dumps(payload.selected_concept.model_dump(), ensure_ascii=True)}\n"
+                                f"product_intel={json.dumps(payload.product_intel.model_dump(), ensure_ascii=True)}\n"
+                                f"brand_constraints={json.dumps(payload.brand_constraints.model_dump(), ensure_ascii=True)}\n"
+                                f"persona={json.dumps(payload.persona.model_dump(), ensure_ascii=True)}\n\n"
+                                "Output constraints:\n"
+                                "- produce 3 to 8 shots\n"
+                                "- sequence must be 0-indexed contiguous\n"
+                                "- sum of durations should closely match target duration\n"
+                                "- transition_in for first shot must be opening\n"
+                            ),
+                        }
+                    ],
+                },
+            ],
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "tv_storyboard_output",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+            "max_output_tokens": 2600,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json",
+        }
+        data = await self._post_responses(body=body, headers=headers)
+        parsed = self._extract_json_output(data)
+        return TvStoryboardGenerateOutput.model_validate(parsed)
 
     async def _post_responses(self, *, body: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=80.0) as client:

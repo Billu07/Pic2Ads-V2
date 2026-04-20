@@ -17,6 +17,7 @@ from app.models.jobs import (
     TvStoryboardApproveResponse,
 )
 from app.models.concepts import TvConceptGenerateResponse, TvConceptListResponse
+from app.models.storyboard import TvStoryboardGenerateResponse, TvStoryboardListResponse
 from app.services.concepts import concept_service
 from app.services.duration_planner import duration_planner_service
 from app.services.jobs import job_service
@@ -24,6 +25,7 @@ from app.services.product_intel import product_intel_service
 from app.services.render_units import render_unit_service
 from app.services.seedance_pipeline import seedance_pipeline_service
 from app.services.scripts import script_service
+from app.services.storyboard import storyboard_service
 
 router = APIRouter(prefix="/jobs")
 
@@ -149,6 +151,7 @@ async def run_local_pipeline(job_id: str) -> LocalPipelineRunResponse:
             script_status="cached" if scripts.cached else "generated",
             tv_gate_status=(
                 f"blocked_concept_selected_{str(tv_gate_state['concept_selected']).lower()}"
+                f"_storyboard_generated_{str(tv_gate_state['storyboard_generated']).lower()}"
                 f"_storyboard_approved_{str(tv_gate_state['storyboard_approved']).lower()}"
             ),
             duration_plan_status="blocked_tv_gates_pending",
@@ -213,6 +216,7 @@ def get_tv_gate_status(job_id: str) -> TvGateStatusResponse:
         required=bool(state["required"]),
         concept_selected=bool(state["concept_selected"]),
         selected_concept_id=state["selected_concept_id"],
+        storyboard_generated=bool(state["storyboard_generated"]),
         storyboard_approved=bool(state["storyboard_approved"]),
         ready_for_render=bool(state["ready_for_render"]),
     )
@@ -245,6 +249,37 @@ def list_tv_concepts(job_id: str) -> TvConceptListResponse:
     return result
 
 
+@router.post("/{job_id}/storyboard/generate", response_model=TvStoryboardGenerateResponse)
+async def generate_tv_storyboard(job_id: str) -> TvStoryboardGenerateResponse:
+    try:
+        result = await storyboard_service.generate_for_job(job_id)
+    except RuntimeError as exc:
+        if str(exc) in {
+            "storyboard_generation_only_for_tv_mode",
+            "select_concept_before_storyboard_generation",
+            "concept_id_not_generated",
+        }:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_operation_failed") from exc
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return result
+
+
+@router.get("/{job_id}/storyboard", response_model=TvStoryboardListResponse)
+def list_tv_storyboard(job_id: str) -> TvStoryboardListResponse:
+    try:
+        result = storyboard_service.list_for_job(job_id)
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_read_failed") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return result
+
+
 @router.post("/{job_id}/concepts/select", response_model=TvConceptSelectResponse)
 def select_tv_concept(job_id: str, req: TvConceptSelectRequest) -> TvConceptSelectResponse:
     try:
@@ -270,6 +305,7 @@ def select_tv_concept(job_id: str, req: TvConceptSelectRequest) -> TvConceptSele
         job_id=job_id,
         concept_id=req.concept_id.strip(),
         concept_selected=bool(state["concept_selected"]),
+        storyboard_generated=bool(state["storyboard_generated"]),
         storyboard_approved=bool(state["storyboard_approved"]),
         ready_for_render=bool(state["ready_for_render"]),
     )
@@ -295,6 +331,8 @@ def approve_tv_storyboard(
         raise HTTPException(status_code=404, detail="job_not_found")
     if not state["concept_selected"]:
         raise HTTPException(status_code=400, detail="select_concept_before_storyboard_approval")
+    if not state["storyboard_generated"]:
+        raise HTTPException(status_code=400, detail="generate_storyboard_before_approval")
 
     updated = job_service.set_tv_storyboard_approved(job_id, req.approved)
     if not updated:
@@ -304,6 +342,7 @@ def approve_tv_storyboard(
         raise HTTPException(status_code=404, detail="job_not_found")
     return TvStoryboardApproveResponse(
         job_id=job_id,
+        storyboard_generated=bool(next_state["storyboard_generated"]),
         storyboard_approved=bool(next_state["storyboard_approved"]),
         concept_selected=bool(next_state["concept_selected"]),
         ready_for_render=bool(next_state["ready_for_render"]),

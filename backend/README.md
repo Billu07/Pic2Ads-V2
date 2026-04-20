@@ -16,6 +16,8 @@ This is the first implementation step for Pic2Ads.
   - `POST /v1/jobs/{job_id}/concepts/generate`
   - `GET /v1/jobs/{job_id}/concepts`
   - `POST /v1/jobs/{job_id}/concepts/select`
+  - `POST /v1/jobs/{job_id}/storyboard/generate`
+  - `GET /v1/jobs/{job_id}/storyboard`
   - `POST /v1/jobs/{job_id}/storyboard/approve`
 - Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing `taskId` mappings (supports `Idempotency-Key`)
 - Render graph endpoints:
@@ -34,8 +36,12 @@ This is the first implementation step for Pic2Ads.
 - Due retries are now claimable/resubmittable from `next_retry_at` with stale-task callback protection
 - Segment regen endpoint: `POST /v1/jobs/{job_id}/segments/{segment_id}/regen`
 - `run-local` now runs: Product Intel -> Brand Strategist -> Casting Director -> Screenwriter -> Duration Planner -> Seedance submit
-- For `mode=tv`, `run-local` blocks render submission until concept is selected and storyboard is approved.
+- For `mode=tv`, `run-local` blocks render submission until:
+  - concept is selected
+  - storyboard is generated for that selected concept
+  - storyboard is approved
 - `concepts/select` now validates concept IDs against generated concepts stored in `workflow_state.tv.concepts`.
+- `storyboard/approve` now validates storyboard existence before allowing approval.
 
 ## Run locally
 1. `cd backend`

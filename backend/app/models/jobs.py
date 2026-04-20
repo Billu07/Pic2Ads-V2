@@ -56,6 +56,7 @@ class TvConceptSelectResponse(BaseModel):
     job_id: str
     concept_id: str
     concept_selected: bool
+    storyboard_generated: bool
     storyboard_approved: bool
     ready_for_render: bool
 
@@ -66,6 +67,7 @@ class TvStoryboardApproveRequest(BaseModel):
 
 class TvStoryboardApproveResponse(BaseModel):
     job_id: str
+    storyboard_generated: bool
     storyboard_approved: bool
     concept_selected: bool
     ready_for_render: bool
@@ -76,5 +78,6 @@ class TvGateStatusResponse(BaseModel):
     required: bool
     concept_selected: bool
     selected_concept_id: str | None = None
+    storyboard_generated: bool
     storyboard_approved: bool
     ready_for_render: bool
