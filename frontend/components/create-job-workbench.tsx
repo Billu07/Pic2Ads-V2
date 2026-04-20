@@ -428,12 +428,12 @@ export function CreateJobWorkbench() {
 
   return (
     <div className="workspace">
-      <section className="panel reveal">
+      <section className="panel panel-main reveal">
         <p className="eyebrow">Creative Workspace</p>
-        <h2 style={{ margin: 0 }}>Build your next job</h2>
+        <h2 className="panel-heading">Build your next job</h2>
         <p className="caption">{modePreset.note}</p>
 
-        <div className="mode-switch" style={{ marginTop: "0.6rem" }}>
+        <div className="mode-switch">
           {(["ugc", "pro_arc", "tv"] as const).map((mode) => (
             <button
               type="button"
@@ -446,7 +446,7 @@ export function CreateJobWorkbench() {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: "0.95rem" }}>
+        <form onSubmit={handleSubmit} className="job-form">
           <div className="field-grid">
             <div className="field">
               <label htmlFor="product_name">Product Name</label>
@@ -704,15 +704,7 @@ export function CreateJobWorkbench() {
             </div>
           </div>
 
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.45rem",
-              marginTop: "0.75rem",
-              fontSize: "0.86rem",
-            }}
-          >
+          <label className="inline-toggle">
             <input
               type="checkbox"
               checked={form.auto_run_local}
@@ -723,7 +715,7 @@ export function CreateJobWorkbench() {
             Auto-run local pipeline after creation
           </label>
 
-          <div className="cta-row">
+          <div className="cta-row form-actions">
             <button
               type="submit"
               className="btn btn-accent"
@@ -747,27 +739,27 @@ export function CreateJobWorkbench() {
         </form>
       </section>
 
-      <aside className="panel reveal delay-1">
+      <aside className="panel panel-side reveal delay-1">
         <p className="eyebrow">Run State</p>
-        <h3 style={{ margin: "0 0 0.3rem", fontSize: "1.5rem" }}>Production Snapshot</h3>
+        <h3 className="panel-subheading">Production Snapshot</h3>
         <p className="caption">
           This workspace initializes a backend job and optionally starts the local pipeline runner.
         </p>
 
         <div className="status-box">
           <p className="status-title">Mode</p>
-          <p className="caption" style={{ margin: 0 }}>
+          <p className="caption status-copy">
             {modePreset.label}
           </p>
         </div>
 
         <div className="status-box">
           <p className="status-title">Job Creation</p>
-          <p className="caption" style={{ margin: 0 }}>
+          <p className="caption status-copy">
             {createdJob ? `Created: ${createdJob.id}` : "Awaiting submit"}
           </p>
           {createdJob && (
-            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
+            <div className="cta-row compact-actions">
               <Link href={`/jobs/${createdJob.id}`} className="btn btn-primary">
                 Open Manifest
               </Link>
@@ -777,7 +769,7 @@ export function CreateJobWorkbench() {
 
         <div className="status-box">
           <p className="status-title">Pipeline</p>
-          <p className="caption" style={{ margin: 0 }}>
+          <p className="caption status-copy">
             {pipelineResult
               ? `Video status: ${pipelineResult.video_generate_status}`
               : isRunning
@@ -785,7 +777,7 @@ export function CreateJobWorkbench() {
                 : "Not started"}
           </p>
           {pipelineResult && (
-            <p className="hint" style={{ marginTop: "0.35rem" }}>
+            <p className="hint status-hint">
               Intel: {pipelineResult.product_intel_status} | Brand:{" "}
               {pipelineResult.brand_strategy_status} | Casting: {pipelineResult.casting_status} |
               Scripts: {pipelineResult.script_status} | TV gates: {pipelineResult.tv_gate_status} |
@@ -797,7 +789,7 @@ export function CreateJobWorkbench() {
         {createdJob?.mode === "tv" && (
           <div className="status-box">
             <p className="status-title">TV Gate Flow</p>
-            <p className="caption" style={{ margin: 0 }}>
+            <p className="caption status-copy">
               {tvGateState
                 ? `Ready for render: ${tvGateState.ready_for_render ? "yes" : "no"}`
                 : "Loading TV workflow status..."}
@@ -819,7 +811,7 @@ export function CreateJobWorkbench() {
               </span>
             </div>
 
-            <div className="cta-row" style={{ marginTop: "0.55rem" }}>
+            <div className="cta-row compact-actions">
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -848,7 +840,7 @@ export function CreateJobWorkbench() {
 
             {tvConcepts.length > 0 && (
               <div className="tv-list-block">
-                <p className="status-title" style={{ marginTop: 0 }}>
+                <p className="status-title">
                   Concepts
                 </p>
                 <div className="tv-list">
@@ -874,7 +866,7 @@ export function CreateJobWorkbench() {
 
             {tvStoryboardShots.length > 0 && (
               <div className="tv-list-block">
-                <p className="status-title" style={{ marginTop: 0 }}>
+                <p className="status-title">
                   Storyboard Shots
                 </p>
                 <div className="tv-list">
@@ -887,7 +879,7 @@ export function CreateJobWorkbench() {
                     </div>
                   ))}
                 </div>
-                <div className="cta-row" style={{ marginTop: "0.5rem" }}>
+                <div className="cta-row compact-actions">
                   <button
                     type="button"
                     className="btn btn-secondary"

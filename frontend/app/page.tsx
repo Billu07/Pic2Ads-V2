@@ -102,7 +102,7 @@ export default function HomePage() {
               <span className="orbit-chip">Render Manifest</span>
               <span className="orbit-chip">TV Gates</span>
             </div>
-            <Link href="/jobs/sample-job-id" className="btn btn-primary" style={{ width: "fit-content" }}>
+            <Link href="/jobs/sample-job-id" className="btn btn-primary btn-inline">
               Open Manifest Demo
             </Link>
           </aside>
@@ -197,7 +197,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="bento-item">
-            <div className="mesh-bg mesh-1" style={{ animationDelay: '-5s' }} />
+            <div className="mesh-bg mesh-1 mesh-delayed" />
             <div className="bento-content">
               <h4>Variant B</h4>
               <p>Narrative cut</p>
@@ -209,7 +209,7 @@ export default function HomePage() {
       <section className="split-feature reveal delay-2">
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Execution Logic</p>
-          <h2 style={{ marginTop: 0 }}>Seedance-first economics, premium when needed.</h2>
+          <h2 className="flush-title">Seedance-first economics, premium when needed.</h2>
           <ul className="line-list">
             <li>Seedance 2.0 default routing for cost-efficient throughput</li>
             <li>Extend chains for continuous shots beyond 15 seconds</li>
@@ -219,7 +219,7 @@ export default function HomePage() {
         </article>
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Operator Ready</p>
-          <h2 style={{ marginTop: 0 }}>One workspace from brief to rendered outputs.</h2>
+          <h2 className="flush-title">One workspace from brief to rendered outputs.</h2>
           <p className="caption">
             Start with your product image and let the pipeline generate structured outputs. Follow
             segment progress and open output URLs directly for review and downstream editing.

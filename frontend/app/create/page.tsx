@@ -21,7 +21,7 @@ export default function CreatePage() {
     <main>
       <section className="section story-shell reveal">
         <p className="eyebrow">Build Flow</p>
-        <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
+        <h1 className="create-title">
           Craft your next ad run with cinematic calm.
         </h1>
         <p className="section-intro">
