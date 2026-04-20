@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
     openai_vision_model: str = Field(default="gpt-4o", alias="OPENAI_VISION_MODEL")
+    openai_script_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_SCRIPT_MODEL")
 
     kie_api_key: str | None = Field(default=None, alias="KIE_API_KEY")
     kie_base_url: str = Field(default="https://api.kie.ai", alias="KIE_BASE_URL")

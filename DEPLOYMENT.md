@@ -59,6 +59,7 @@ Backend environment variables:
 - `API_PREFIX=/v1`
 - `DATABASE_URL=<supabase-session-pooler-url>?sslmode=require`
 - `OPENAI_API_KEY=<...>`
+- `OPENAI_SCRIPT_MODEL=gpt-4.1-mini`
 - `KIE_API_KEY=<...>`
 - `KIE_CALLBACK_URL=https://api.pic2ads.io/v1/webhooks/kie`
 - `KIE_WEBHOOK_SECRET=<optional>`

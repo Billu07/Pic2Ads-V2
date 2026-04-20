@@ -8,6 +8,13 @@ This is the first implementation step for Pic2Ads.
 - Basic `jobs` API surface (create + status) backed by Postgres
 - Local orchestrator endpoint: `POST /v1/jobs/{job_id}/pipeline/run-local`
 - Product Intelligence endpoint (`POST /v1/jobs/{job_id}/intel`) with GPT-4o vision call + DB persistence
+- Brand strategy endpoint (`POST /v1/jobs/{job_id}/brand-strategy`) for mode-aware tone/claims constraints
+- Casting endpoint (`POST /v1/jobs/{job_id}/casting`) for creator persona generation
+- Screenwriter endpoint (`POST /v1/jobs/{job_id}/scripts`) with mode-aware script generation + cache replay
+- TV gate endpoints:
+  - `GET /v1/jobs/{job_id}/tv/gates`
+  - `POST /v1/jobs/{job_id}/concepts/select`
+  - `POST /v1/jobs/{job_id}/storyboard/approve`
 - Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing `taskId` mappings (supports `Idempotency-Key`)
 - Render graph endpoints:
   - `POST /v1/jobs/{job_id}/units` (create render unit + segments)
@@ -24,6 +31,8 @@ This is the first implementation step for Pic2Ads.
 - Failed provider tasks now use retry scheduling and dead-letter fallback
 - Due retries are now claimable/resubmittable from `next_retry_at` with stale-task callback protection
 - Segment regen endpoint: `POST /v1/jobs/{job_id}/segments/{segment_id}/regen`
+- `run-local` now runs: Product Intel -> Brand Strategist -> Casting Director -> Screenwriter -> Duration Planner -> Seedance submit
+- For `mode=tv`, `run-local` blocks render submission until concept is selected and storyboard is approved.
 
 ## Run locally
 1. `cd backend`

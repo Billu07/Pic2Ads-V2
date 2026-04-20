@@ -40,5 +40,41 @@ class DispatchWorkflowResponse(BaseModel):
 class LocalPipelineRunResponse(BaseModel):
     job_id: str
     product_intel_status: str
+    brand_strategy_status: str
+    casting_status: str
+    script_status: str
+    tv_gate_status: str
     duration_plan_status: str
     video_generate_status: str
+
+
+class TvConceptSelectRequest(BaseModel):
+    concept_id: str = Field(min_length=1, max_length=120)
+
+
+class TvConceptSelectResponse(BaseModel):
+    job_id: str
+    concept_id: str
+    concept_selected: bool
+    storyboard_approved: bool
+    ready_for_render: bool
+
+
+class TvStoryboardApproveRequest(BaseModel):
+    approved: bool = True
+
+
+class TvStoryboardApproveResponse(BaseModel):
+    job_id: str
+    storyboard_approved: bool
+    concept_selected: bool
+    ready_for_render: bool
+
+
+class TvGateStatusResponse(BaseModel):
+    job_id: str
+    required: bool
+    concept_selected: bool
+    selected_concept_id: str | None = None
+    storyboard_approved: bool
+    ready_for_render: bool

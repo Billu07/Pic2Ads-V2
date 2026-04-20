@@ -490,8 +490,10 @@ export function CreateJobWorkbench() {
           </p>
           {pipelineResult && (
             <p className="hint" style={{ marginTop: "0.35rem" }}>
-              Intel: {pipelineResult.product_intel_status} | Duration plan:{" "}
-              {pipelineResult.duration_plan_status}
+              Intel: {pipelineResult.product_intel_status} | Brand:{" "}
+              {pipelineResult.brand_strategy_status} | Casting: {pipelineResult.casting_status} |
+              Scripts: {pipelineResult.script_status} | TV gates: {pipelineResult.tv_gate_status} |
+              Duration plan: {pipelineResult.duration_plan_status}
             </p>
           )}
         </div>

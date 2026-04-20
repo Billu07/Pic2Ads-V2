@@ -54,6 +54,10 @@ export type JobCreatedResponse = {
 export type LocalPipelineResponse = {
   job_id: string;
   product_intel_status: string;
+  brand_strategy_status: string;
+  casting_status: string;
+  script_status: string;
+  tv_gate_status: string;
   duration_plan_status: string;
   video_generate_status: string;
 };
