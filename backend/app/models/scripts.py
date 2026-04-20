@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.creative import BrandConstraintsOutput, PersonaOutput
+from app.models.prompting import CreativeDecisions
 from app.models.product_intel import ProductIntelOutput
 
 
@@ -54,6 +55,9 @@ class ScreenwriterInput(BaseModel):
     product_name: str = Field(min_length=1, max_length=200)
     product_image_url: str = Field(min_length=1, max_length=2000)
     brief: str | None = Field(default=None, max_length=3000)
+    prompt_pack_id: str = Field(min_length=1, max_length=80)
+    prompt_directives: list[str] = Field(default_factory=list, max_length=8)
+    creative_decisions: CreativeDecisions
     product_intel: ProductIntelOutput
     brand_constraints: BrandConstraintsOutput | None = None
     persona: PersonaOutput | None = None

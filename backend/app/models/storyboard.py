@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.models.concepts import TvConcept
 from app.models.creative import BrandConstraintsOutput, PersonaOutput
+from app.models.prompting import CreativeDecisions
 from app.models.product_intel import ProductIntelOutput
 
 
@@ -19,6 +20,9 @@ class TvStoryboardGenerateInput(BaseModel):
     product_name: str = Field(min_length=1, max_length=200)
     brief: str | None = Field(default=None, max_length=3000)
     duration_s: int = Field(ge=15, le=60)
+    prompt_pack_id: str = Field(min_length=1, max_length=80)
+    prompt_directives: list[str] = Field(default_factory=list, max_length=8)
+    creative_decisions: CreativeDecisions
     selected_concept: TvConcept
     product_intel: ProductIntelOutput
     brand_constraints: BrandConstraintsOutput
@@ -48,4 +52,3 @@ class TvStoryboardListResponse(BaseModel):
     concept_id: str | None = None
     generated: bool
     shots: list[TvStoryboardShot]
-

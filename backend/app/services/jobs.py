@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from app.db.client import get_db_connection
 from app.models.jobs import CreateJobRequest, JobStatusResponse
+from app.models.prompting import CreativeDecisions, CreativeDecisionsInput
 
 
 @dataclass
@@ -21,19 +22,73 @@ class JobService:
     """Postgres-backed job store."""
 
     @staticmethod
-    def _default_workflow_state(mode: str) -> dict[str, Any]:
+    def _default_creative_decisions(mode: str) -> CreativeDecisions:
+        if mode == "pro_arc":
+            return CreativeDecisions(
+                tone="cinematic but grounded",
+                hook_style="storytime_confession",
+                offer_angle="emotional_relief",
+                cta_style="question_prompt",
+                must_include=["one grounded personal moment", "visible product use beat"],
+                must_avoid=["over-polished ad language"],
+            )
         if mode == "tv":
-            return {
-                "tv": {
-                    "concept_selected": False,
-                    "selected_concept_id": None,
-                    "storyboard_concept_id": None,
-                    "storyboard": [],
-                    "storyboard_approved": False,
-                    "concepts": [],
-                }
+            return CreativeDecisions(
+                tone="premium narrative clarity",
+                hook_style="problem_first",
+                offer_angle="performance_proof",
+                cta_style="direct_command",
+                must_include=["clear problem-to-relief progression", "hero product beat"],
+                must_avoid=["low-trust clickbait phrasing"],
+            )
+        return CreativeDecisions(
+            tone="raw and relatable",
+            hook_style="demo_first",
+            offer_angle="speed_convenience",
+            cta_style="soft_invite",
+            must_include=["natural handheld cadence"],
+            must_avoid=["scripted corporate wording"],
+        )
+
+    @staticmethod
+    def _prompt_pack_id_for_mode(mode: str) -> str:
+        return {
+            "ugc": "ugc_core_v1",
+            "pro_arc": "pro_arc_arc_v1",
+            "tv": "tv_campaign_v1",
+        }.get(mode, "ugc_core_v1")
+
+    @classmethod
+    def _merge_creative_decisions(
+        cls, mode: str, updates: CreativeDecisionsInput | None
+    ) -> CreativeDecisions:
+        defaults = cls._default_creative_decisions(mode)
+        if updates is None:
+            return defaults
+        raw = updates.model_dump(exclude_none=True)
+        return defaults.model_copy(update=raw)
+
+    @classmethod
+    def _default_workflow_state(
+        cls, mode: str, creative_updates: CreativeDecisionsInput | None = None
+    ) -> dict[str, Any]:
+        state: dict[str, Any] = {
+            "creative": {
+                "mode": mode,
+                "prompt_pack_id": cls._prompt_pack_id_for_mode(mode),
+                "decisions": cls._merge_creative_decisions(mode, creative_updates).model_dump(),
             }
-        return {}
+        }
+        if mode == "tv":
+            state["tv"] = {
+                "concept_selected": False,
+                "selected_concept_id": None,
+                "storyboard_concept_id": None,
+                "storyboard": [],
+                "storyboard_approved": False,
+                "concepts": [],
+            }
+        return state
 
     @staticmethod
     def _extract_tv_state(workflow_state: dict[str, Any]) -> dict[str, Any]:
@@ -45,7 +100,7 @@ class JobService:
     def create_job(self, req: CreateJobRequest) -> JobRecord:
         job_id = f"job_{uuid4().hex[:12]}"
         deliverables = [item.model_dump() for item in req.deliverables]
-        workflow_state = self._default_workflow_state(req.mode)
+        workflow_state = self._default_workflow_state(req.mode, req.creative_decisions)
 
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -174,6 +229,85 @@ class JobService:
             return None
         state = row["workflow_state"]
         return state if isinstance(state, dict) else {}
+
+    def get_creative_context(self, job_id: str) -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select mode::text as mode, workflow_state
+                    from public.ad_job
+                    where id = %s
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+
+        mode = str(row["mode"])
+        state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
+        creative = state.get("creative", {}) if isinstance(state, dict) else {}
+        creative_decisions_raw = (
+            creative.get("decisions", {}) if isinstance(creative, dict) else {}
+        )
+        updates = (
+            CreativeDecisionsInput.model_validate(creative_decisions_raw)
+            if isinstance(creative_decisions_raw, dict)
+            else None
+        )
+        decisions = self._merge_creative_decisions(mode, updates)
+
+        prompt_pack_id = self._prompt_pack_id_for_mode(mode)
+        if isinstance(creative, dict) and isinstance(creative.get("prompt_pack_id"), str):
+            prompt_pack_id = str(creative["prompt_pack_id"])
+
+        return {
+            "job_id": job_id,
+            "mode": mode,
+            "prompt_pack_id": prompt_pack_id,
+            "decisions": decisions.model_dump(),
+        }
+
+    def set_creative_decisions(
+        self, job_id: str, updates: CreativeDecisionsInput
+    ) -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("select mode::text as mode from public.ad_job where id = %s", (job_id,))
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                mode = str(row["mode"])
+                decisions = self._merge_creative_decisions(mode, updates)
+                creative_payload = {
+                    "mode": mode,
+                    "prompt_pack_id": self._prompt_pack_id_for_mode(mode),
+                    "decisions": decisions.model_dump(),
+                }
+                cur.execute(
+                    """
+                    update public.ad_job
+                    set workflow_state = jsonb_set(
+                      coalesce(workflow_state, '{}'::jsonb),
+                      '{creative}',
+                      %s::jsonb,
+                      true
+                    )
+                    where id = %s
+                    """,
+                    (json.dumps(creative_payload), job_id),
+                )
+                updated = cur.rowcount > 0
+            conn.commit()
+        if not updated:
+            return None
+        return {
+            "job_id": job_id,
+            "mode": mode,
+            "prompt_pack_id": str(creative_payload["prompt_pack_id"]),
+            "decisions": decisions.model_dump(),
+        }
 
     def get_tv_gate_state(self, job_id: str) -> dict[str, Any] | None:
         with get_db_connection() as conn:

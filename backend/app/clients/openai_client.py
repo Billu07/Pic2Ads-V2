@@ -97,6 +97,7 @@ class OpenAIClient:
                                 "- natural handheld motion, believable everyday setting\n"
                                 "- mention only product features present in product_intel.visible_claims "
                                 "or clearly implied by affordances.\n"
+                                "- obey prompt pack directives and creative decisions.\n"
                             ),
                         }
                     ],
@@ -111,6 +112,9 @@ class OpenAIClient:
                                 f"duration_s={duration_target}\n"
                                 f"product_name={payload.product_name}\n"
                                 f"brief={payload.brief or 'none'}\n"
+                                f"prompt_pack_id={payload.prompt_pack_id}\n"
+                                f"prompt_directives={json.dumps(payload.prompt_directives, ensure_ascii=True)}\n"
+                                f"creative_decisions={json.dumps(payload.creative_decisions.model_dump(), ensure_ascii=True)}\n"
                                 f"product_intel={json.dumps(payload.product_intel.model_dump(), ensure_ascii=True)}\n"
                                 f"brand_constraints={json.dumps(payload.brand_constraints.model_dump(), ensure_ascii=True) if payload.brand_constraints else 'none'}\n"
                                 f"persona={json.dumps(payload.persona.model_dump(), ensure_ascii=True) if payload.persona else 'none'}\n\n"
@@ -124,6 +128,7 @@ class OpenAIClient:
                                 "render_pattern_hint=tv_shotlist and segment_count_hint between 3 and 8.\n"
                                 "Each variant must include timed dialogue_beats and visual_beats that fit duration.\n"
                                 "Keep lines short and human. Avoid polished ad language.\n"
+                                "Use creative_decisions as hard steering for hook style, offer angle, tone, and CTA behavior.\n"
                             ),
                         }
                     ],
@@ -282,6 +287,7 @@ class OpenAIClient:
                                 "Return exactly 3 concept treatments as strict JSON matching schema.\n"
                                 "Each concept must be materially different in creative angle.\n"
                                 "No invented product claims. Keep product fidelity grounded in provided intel.\n"
+                                "Follow prompt pack directives and creative decisions for persuasion structure.\n"
                             ),
                         }
                     ],
@@ -295,6 +301,9 @@ class OpenAIClient:
                                 f"product_name={payload.product_name}\n"
                                 f"duration_s={payload.duration_s}\n"
                                 f"brief={payload.brief or 'none'}\n"
+                                f"prompt_pack_id={payload.prompt_pack_id}\n"
+                                f"prompt_directives={json.dumps(payload.prompt_directives, ensure_ascii=True)}\n"
+                                f"creative_decisions={json.dumps(payload.creative_decisions.model_dump(), ensure_ascii=True)}\n"
                                 f"product_intel={json.dumps(payload.product_intel.model_dump(), ensure_ascii=True)}\n"
                                 f"brand_constraints={json.dumps(payload.brand_constraints.model_dump(), ensure_ascii=True)}\n"
                                 f"persona={json.dumps(payload.persona.model_dump(), ensure_ascii=True)}\n\n"
@@ -347,6 +356,7 @@ class OpenAIClient:
                                 "Return strict JSON matching schema only.\n"
                                 "Shots must be 1-15 seconds each and ordered.\n"
                                 "No overlays, no on-screen text, no invented product claims.\n"
+                                "Maintain alignment with prompt pack directives and creative decisions.\n"
                             ),
                         }
                     ],
@@ -360,6 +370,9 @@ class OpenAIClient:
                                 f"product_name={payload.product_name}\n"
                                 f"duration_s={payload.duration_s}\n"
                                 f"brief={payload.brief or 'none'}\n"
+                                f"prompt_pack_id={payload.prompt_pack_id}\n"
+                                f"prompt_directives={json.dumps(payload.prompt_directives, ensure_ascii=True)}\n"
+                                f"creative_decisions={json.dumps(payload.creative_decisions.model_dump(), ensure_ascii=True)}\n"
                                 f"selected_concept={json.dumps(payload.selected_concept.model_dump(), ensure_ascii=True)}\n"
                                 f"product_intel={json.dumps(payload.product_intel.model_dump(), ensure_ascii=True)}\n"
                                 f"brand_constraints={json.dumps(payload.brand_constraints.model_dump(), ensure_ascii=True)}\n"

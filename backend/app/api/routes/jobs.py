@@ -18,6 +18,7 @@ from app.models.jobs import (
 )
 from app.models.concepts import TvConceptGenerateResponse, TvConceptListResponse
 from app.models.storyboard import TvStoryboardGenerateResponse, TvStoryboardListResponse
+from app.models.prompting import CreativeDecisionsInput, CreativeDecisionsResponse, CreativeDecisions
 from app.services.concepts import concept_service
 from app.services.duration_planner import duration_planner_service
 from app.services.jobs import job_service
@@ -59,6 +60,40 @@ def get_job(job_id: str) -> JobStatusResponse:
     if found is None:
         raise HTTPException(status_code=404, detail="job_not_found")
     return found
+
+
+@router.get("/{job_id}/creative-decisions", response_model=CreativeDecisionsResponse)
+def get_creative_decisions(job_id: str) -> CreativeDecisionsResponse:
+    try:
+        context = job_service.get_creative_context(job_id)
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_read_failed") from exc
+    if context is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return CreativeDecisionsResponse(
+        job_id=job_id,
+        mode=str(context["mode"]),
+        prompt_pack_id=str(context["prompt_pack_id"]),
+        decisions=CreativeDecisions.model_validate(context["decisions"]),
+    )
+
+
+@router.put("/{job_id}/creative-decisions", response_model=CreativeDecisionsResponse)
+def update_creative_decisions(
+    job_id: str, req: CreativeDecisionsInput
+) -> CreativeDecisionsResponse:
+    try:
+        context = job_service.set_creative_decisions(job_id, req)
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_write_failed") from exc
+    if context is None:
+        raise HTTPException(status_code=404, detail="job_not_found")
+    return CreativeDecisionsResponse(
+        job_id=job_id,
+        mode=str(context["mode"]),
+        prompt_pack_id=str(context["prompt_pack_id"]),
+        decisions=CreativeDecisions.model_validate(context["decisions"]),
+    )
 
 
 @router.post("/{job_id}/dispatch", response_model=DispatchWorkflowResponse)

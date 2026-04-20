@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.models.prompting import CreativeDecisionsInput
+
 
 class ProductInput(BaseModel):
     product_name: str = Field(min_length=1, max_length=200)
@@ -18,6 +20,7 @@ class CreateJobRequest(BaseModel):
     deliverables: list[DeliverableRequest] = Field(default_factory=list)
     brand_id: str | None = None
     brief: str | None = None
+    creative_decisions: CreativeDecisionsInput | None = None
 
 
 class JobResponse(BaseModel):

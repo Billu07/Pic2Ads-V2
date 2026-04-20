@@ -28,6 +28,32 @@ export type ExportManifest = {
 
 export type CreateJobMode = "ugc" | "pro_arc" | "tv";
 export type DeliverableAspect = "9:16" | "1:1" | "16:9";
+export type CreativeHookStyle =
+  | "problem_first"
+  | "social_proof"
+  | "demo_first"
+  | "storytime_confession"
+  | "authority_insight";
+export type CreativeOfferAngle =
+  | "speed_convenience"
+  | "premium_quality"
+  | "value_savings"
+  | "emotional_relief"
+  | "performance_proof";
+export type CreativeCtaStyle =
+  | "soft_invite"
+  | "direct_command"
+  | "question_prompt"
+  | "urgency_push";
+
+export type CreativeDecisionsPayload = {
+  tone?: string;
+  hook_style?: CreativeHookStyle;
+  offer_angle?: CreativeOfferAngle;
+  cta_style?: CreativeCtaStyle;
+  must_include?: string[];
+  must_avoid?: string[];
+};
 
 export type CreateJobPayload = {
   mode: CreateJobMode;
@@ -42,6 +68,7 @@ export type CreateJobPayload = {
   }>;
   brand_id?: string;
   brief?: string;
+  creative_decisions?: CreativeDecisionsPayload;
 };
 
 export type JobCreatedResponse = {

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 import { buildMetadata } from "@/lib/seo";
 
@@ -18,26 +18,26 @@ export const metadata: Metadata = buildMetadata({
 export default function TvCommercialAiPage() {
   return (
     <main>
-      <section className="section">
+      <section className="section story-shell reveal">
         <p className="eyebrow">Mode C · TV Commercial</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
-          Multi-shot commercial composition with operator control
+          Multi-shot commercial composition with operator control.
         </h1>
         <p className="section-intro">
           Built for campaign-grade storytelling where shot sequencing, continuity constraints, and
           export readiness need deterministic structure.
         </p>
       </section>
-      <section className="split-feature">
-        <article className="soft-panel">
+      <section className="split-feature reveal delay-1">
+        <article className="soft-panel atmospheric">
           <p className="eyebrow">Team workflow fit</p>
           <ul className="line-list">
             <li>Render units map cleanly to production planning logic</li>
             <li>Segment timelines enable review before final cut assembly</li>
-            <li>Structured output aligns with agency handoff processes</li>
+            <li>Structured outputs align with agency handoff process</li>
           </ul>
         </article>
-        <article className="soft-panel">
+        <article className="soft-panel atmospheric">
           <p className="eyebrow">Technical baseline</p>
           <ul className="line-list">
             <li>Seedance-first routing for lower blended generation cost</li>

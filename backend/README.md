@@ -19,6 +19,9 @@ This is the first implementation step for Pic2Ads.
   - `POST /v1/jobs/{job_id}/storyboard/generate`
   - `GET /v1/jobs/{job_id}/storyboard`
   - `POST /v1/jobs/{job_id}/storyboard/approve`
+- Prompt orchestration + creative decision endpoints:
+  - `GET /v1/jobs/{job_id}/creative-decisions`
+  - `PUT /v1/jobs/{job_id}/creative-decisions`
 - Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing `taskId` mappings (supports `Idempotency-Key`)
 - Render graph endpoints:
   - `POST /v1/jobs/{job_id}/units` (create render unit + segments)
@@ -42,6 +45,8 @@ This is the first implementation step for Pic2Ads.
   - storyboard is approved
 - `concepts/select` now validates concept IDs against generated concepts stored in `workflow_state.tv.concepts`.
 - `storyboard/approve` now validates storyboard existence before allowing approval.
+- `create job` now accepts optional `creative_decisions` to steer tone/hook/offer/cta and stores these in `workflow_state.creative`.
+- Screenwriter + TV concept/storyboard prompts now use mode-specific prompt packs plus persisted creative decisions.
 
 ## Run locally
 1. `cd backend`

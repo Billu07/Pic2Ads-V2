@@ -11,6 +11,7 @@ from app.models.product_intel import ProductIntelOutput
 from app.models.scripts import ScreenwriterInput, ScreenwriterOutput, ScriptRunResponse
 from app.services.brand_strategy import brand_strategy_service
 from app.services.casting import casting_service
+from app.services.prompt_orchestration import prompt_orchestration_service
 from app.services.product_intel import product_intel_service
 
 
@@ -70,12 +71,19 @@ class ScriptService:
                 return None
             cast = cast_run.output
 
+        prompt_context = prompt_orchestration_service.get_for_job(job_id)
+        if prompt_context is None:
+            return None
+
         payload = ScreenwriterInput(
             mode=str(job_row["mode"]),
             duration_s=int(job_row["duration_s"]),
             product_name=str(job_row["product_name"]),
             product_image_url=str(job_row["product_image_url"]),
             brief=str(job_row["brief"]) if job_row["brief"] else None,
+            prompt_pack_id=str(prompt_context["prompt_pack_id"]),
+            prompt_directives=list(prompt_context["script_directives"]),
+            creative_decisions=prompt_context["creative_decisions"],
             product_intel=intel,
             brand_constraints=brand,
             persona=cast,

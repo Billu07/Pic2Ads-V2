@@ -13,6 +13,7 @@ from app.models.concepts import (
 from app.services.brand_strategy import brand_strategy_service
 from app.services.casting import casting_service
 from app.services.jobs import job_service
+from app.services.prompt_orchestration import prompt_orchestration_service
 from app.services.product_intel import product_intel_service
 
 
@@ -50,10 +51,17 @@ class ConceptService:
             return None
         product_name, _ = context
 
+        prompt_context = prompt_orchestration_service.get_for_job(job_id)
+        if prompt_context is None:
+            return None
+
         payload = TvConceptGenerateInput(
             product_name=product_name,
             brief=self._read_job_brief(job_id),
             duration_s=job.duration_s,
+            prompt_pack_id=str(prompt_context["prompt_pack_id"]),
+            prompt_directives=list(prompt_context["concept_directives"]),
+            creative_decisions=prompt_context["creative_decisions"],
             product_intel=intel_run.output,
             brand_constraints=brand_run.output,
             persona=casting_run.output,
@@ -172,4 +180,3 @@ class ConceptService:
 
 
 concept_service = ConceptService()
-

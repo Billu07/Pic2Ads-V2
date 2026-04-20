@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.models.creative import BrandConstraintsOutput, PersonaOutput
+from app.models.prompting import CreativeDecisions
 from app.models.product_intel import ProductIntelOutput
 
 
@@ -17,6 +18,9 @@ class TvConceptGenerateInput(BaseModel):
     product_name: str = Field(min_length=1, max_length=200)
     brief: str | None = Field(default=None, max_length=3000)
     duration_s: int = Field(ge=15, le=60)
+    prompt_pack_id: str = Field(min_length=1, max_length=80)
+    prompt_directives: list[str] = Field(default_factory=list, max_length=8)
+    creative_decisions: CreativeDecisions
     product_intel: ProductIntelOutput
     brand_constraints: BrandConstraintsOutput
     persona: PersonaOutput
@@ -36,4 +40,3 @@ class TvConceptListResponse(BaseModel):
     job_id: str
     generated: bool
     concepts: list[TvConcept]
-

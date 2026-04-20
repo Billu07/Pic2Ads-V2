@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
+  CreativeCtaStyle,
+  CreativeHookStyle,
+  CreativeOfferAngle,
   createJob,
   CreateJobMode,
   DeliverableAspect,
@@ -24,6 +27,12 @@ type FormState = {
   aspect: DeliverableAspect;
   deliverable_duration: number;
   auto_run_local: boolean;
+  creative_tone: string;
+  hook_style: CreativeHookStyle;
+  offer_angle: CreativeOfferAngle;
+  cta_style: CreativeCtaStyle;
+  must_include_csv: string;
+  must_avoid_csv: string;
 };
 
 const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; note: string }> = {
@@ -44,6 +53,58 @@ const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; not
   },
 };
 
+const CREATIVE_PRESETS: Record<
+  CreateJobMode,
+  {
+    tone: string;
+    hook_style: CreativeHookStyle;
+    offer_angle: CreativeOfferAngle;
+    cta_style: CreativeCtaStyle;
+  }
+> = {
+  ugc: {
+    tone: "raw and relatable",
+    hook_style: "demo_first",
+    offer_angle: "speed_convenience",
+    cta_style: "soft_invite",
+  },
+  pro_arc: {
+    tone: "cinematic but grounded",
+    hook_style: "storytime_confession",
+    offer_angle: "emotional_relief",
+    cta_style: "question_prompt",
+  },
+  tv: {
+    tone: "premium narrative clarity",
+    hook_style: "problem_first",
+    offer_angle: "performance_proof",
+    cta_style: "direct_command",
+  },
+};
+
+const HOOK_STYLE_OPTIONS: Array<{ value: CreativeHookStyle; label: string }> = [
+  { value: "problem_first", label: "Problem First" },
+  { value: "social_proof", label: "Social Proof" },
+  { value: "demo_first", label: "Demo First" },
+  { value: "storytime_confession", label: "Storytime Confession" },
+  { value: "authority_insight", label: "Authority Insight" },
+];
+
+const OFFER_ANGLE_OPTIONS: Array<{ value: CreativeOfferAngle; label: string }> = [
+  { value: "speed_convenience", label: "Speed & Convenience" },
+  { value: "premium_quality", label: "Premium Quality" },
+  { value: "value_savings", label: "Value Savings" },
+  { value: "emotional_relief", label: "Emotional Relief" },
+  { value: "performance_proof", label: "Performance Proof" },
+];
+
+const CTA_STYLE_OPTIONS: Array<{ value: CreativeCtaStyle; label: string }> = [
+  { value: "soft_invite", label: "Soft Invite" },
+  { value: "direct_command", label: "Direct Command" },
+  { value: "question_prompt", label: "Question Prompt" },
+  { value: "urgency_push", label: "Urgency Push" },
+];
+
 function summarizeError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "Unexpected request failure.";
@@ -59,6 +120,14 @@ function summarizeError(error: unknown): string {
   return error.message;
 }
 
+function parseCsvList(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item, index, list) => item.length > 0 && list.indexOf(item) === index)
+    .slice(0, 6);
+}
+
 export function CreateJobWorkbench() {
   const [form, setForm] = useState<FormState>({
     mode: "ugc",
@@ -70,6 +139,12 @@ export function CreateJobWorkbench() {
     aspect: "9:16",
     deliverable_duration: 15,
     auto_run_local: true,
+    creative_tone: CREATIVE_PRESETS.ugc.tone,
+    hook_style: CREATIVE_PRESETS.ugc.hook_style,
+    offer_angle: CREATIVE_PRESETS.ugc.offer_angle,
+    cta_style: CREATIVE_PRESETS.ugc.cta_style,
+    must_include_csv: "",
+    must_avoid_csv: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -99,11 +174,16 @@ export function CreateJobWorkbench() {
 
   function setMode(mode: CreateJobMode) {
     const preset = MODE_PRESETS[mode];
+    const creativePreset = CREATIVE_PRESETS[mode];
     setForm((prev) => ({
       ...prev,
       mode,
       duration_s: preset.duration,
       deliverable_duration: Math.min(preset.duration, 30),
+      creative_tone: creativePreset.tone,
+      hook_style: creativePreset.hook_style,
+      offer_angle: creativePreset.offer_angle,
+      cta_style: creativePreset.cta_style,
     }));
   }
 
@@ -182,6 +262,8 @@ export function CreateJobWorkbench() {
 
     setIsSubmitting(true);
     try {
+      const mustInclude = parseCsvList(form.must_include_csv);
+      const mustAvoid = parseCsvList(form.must_avoid_csv);
       const payload = {
         mode: form.mode,
         duration_s: form.duration_s,
@@ -192,6 +274,14 @@ export function CreateJobWorkbench() {
         deliverables: [{ aspect: form.aspect, duration: form.deliverable_duration }],
         brief: form.brief.trim() || undefined,
         brand_id: form.brand_id.trim() || undefined,
+        creative_decisions: {
+          tone: form.creative_tone.trim() || undefined,
+          hook_style: form.hook_style,
+          offer_angle: form.offer_angle,
+          cta_style: form.cta_style,
+          must_include: mustInclude.length > 0 ? mustInclude : undefined,
+          must_avoid: mustAvoid.length > 0 ? mustAvoid : undefined,
+        },
       };
 
       const created = await createJob(payload);
@@ -404,6 +494,105 @@ export function CreateJobWorkbench() {
                 value={form.brief}
                 onChange={(event) => setForm((prev) => ({ ...prev, brief: event.target.value }))}
                 placeholder="Audience, value proposition, mood, and CTA preferences."
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="creative_tone">Creative Tone</label>
+              <input
+                id="creative_tone"
+                className="input"
+                value={form.creative_tone}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, creative_tone: event.target.value }))
+                }
+                placeholder="raw and relatable"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="hook_style">Hook Style</label>
+              <select
+                id="hook_style"
+                className="select"
+                value={form.hook_style}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    hook_style: event.target.value as CreativeHookStyle,
+                  }))
+                }
+              >
+                {HOOK_STYLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="offer_angle">Offer Angle</label>
+              <select
+                id="offer_angle"
+                className="select"
+                value={form.offer_angle}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    offer_angle: event.target.value as CreativeOfferAngle,
+                  }))
+                }
+              >
+                {OFFER_ANGLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="cta_style">CTA Style</label>
+              <select
+                id="cta_style"
+                className="select"
+                value={form.cta_style}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    cta_style: event.target.value as CreativeCtaStyle,
+                  }))
+                }
+              >
+                {CTA_STYLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="must_include_csv">Must Include (comma separated)</label>
+              <input
+                id="must_include_csv"
+                className="input"
+                value={form.must_include_csv}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, must_include_csv: event.target.value }))
+                }
+                placeholder="natural handheld cadence, one tactile product beat"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="must_avoid_csv">Must Avoid (comma separated)</label>
+              <input
+                id="must_avoid_csv"
+                className="input"
+                value={form.must_avoid_csv}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, must_avoid_csv: event.target.value }))
+                }
+                placeholder="over-polished ad language, fake urgency"
               />
             </div>
           </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 import { buildMetadata } from "@/lib/seo";
 
@@ -24,22 +24,22 @@ const tiers = [
 export default function PricingPage() {
   return (
     <main>
-      <section className="section">
+      <section className="section story-shell reveal">
         <p className="eyebrow">Pricing</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
-          Credits mapped to production complexity
+          Credits mapped to creative complexity.
         </h1>
         <p className="section-intro">
-          Credits map to render complexity. Keep cost low with Seedance-first generation and only
-          use premium cinematic routes where the shot requires it.
+          Keep cost controlled with Seedance-first generation, then escalate only when cinematic
+          quality is required.
         </p>
       </section>
-      <section className="mode-grid">
-        {tiers.map((tier) => (
-          <article key={tier.name} className="mode-panel">
-            <h2>{tier.name}</h2>
-            <p style={{ fontSize: "1.6rem", margin: "0.3rem 0", fontWeight: 800 }}>{tier.price}</p>
-            <p>{tier.credits} credits</p>
+      <section className="pricing-grid reveal delay-1">
+        {tiers.map((tier, index) => (
+          <article key={tier.name} className={`pricing-column ${index === 1 ? "featured" : ""}`}>
+            <p className="eyebrow">{tier.name}</p>
+            <h2>{tier.price}</h2>
+            <p className="caption">{tier.credits} credits</p>
             <p>{tier.fit}</p>
           </article>
         ))}
