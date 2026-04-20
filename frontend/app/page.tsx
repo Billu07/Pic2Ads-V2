@@ -4,6 +4,37 @@ import { homePageKeywords } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 export default function HomePage() {
+  const referenceLibrary = [
+    {
+      id: "clip_ugc",
+      title: "UGC Pulse Cut",
+      mode: "Mode A · UGC",
+      src: "/hero-bg.webm",
+      poster: "/hero-poster.jpg",
+    },
+    {
+      id: "clip_narrative",
+      title: "Narrative Arc Reel",
+      mode: "Mode B · Professional",
+      src: "/hero-bg-2.webm",
+      poster: "/hero-poster.jpg",
+    },
+    {
+      id: "clip_tv",
+      title: "TV Scene Sequence",
+      mode: "Mode C · TV",
+      src: "/hero-bg.webm",
+      poster: "/hero-poster.jpg",
+    },
+    {
+      id: "clip_variation",
+      title: "Variant Playground",
+      mode: "Mode Lab",
+      src: "/hero-bg-2.webm",
+      poster: "/hero-poster.jpg",
+    },
+  ];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -22,21 +53,24 @@ export default function HomePage() {
   };
 
   return (
-    <main>
-      <section className="full-bleed-hero">
-        <video 
-          className="hero-video-bg" 
-          autoPlay 
-          loop 
-          muted 
-          playsInline 
+    <main className="home-main">
+      <section className="full-bleed-hero home-hero">
+        <video
+          className="hero-video-bg"
+          autoPlay
+          loop
+          muted
+          playsInline
           poster="/hero-poster.jpg"
+          preload="metadata"
         >
           <source src="/hero-bg.webm" type="video/webm" />
+          <source src="/hero-bg-2.webm" type="video/webm" />
         </video>
         <div className="hero-overlay" aria-hidden="true" />
+        <div className="hero-grid-overlay" aria-hidden="true" />
         <div className="hero-inner">
-          <div className="hero-main reveal">
+          <div className="hero-main home-hero-main reveal">
             <p className="eyebrow">AI Video Ad Platform</p>
             <h1>Image in. Story out. Ads ready for spend.</h1>
             <p>
@@ -52,8 +86,14 @@ export default function HomePage() {
                 View Credits
               </Link>
             </div>
+            <div className="hero-anchors">
+              <span>Seedance 2.0 Routing</span>
+              <span>Extend-native continuity</span>
+              <span>Segment-level operator control</span>
+            </div>
           </div>
-          <aside className="hero-rail reveal delay-1">
+          <aside className="hero-rail hero-orbit reveal delay-1">
+            <p className="hero-orbit-label">Production Pulse</p>
             <p className="hero-note">
               Three creative modes, one production graph, one render timeline you can actually
               manage.
@@ -61,6 +101,12 @@ export default function HomePage() {
             <p className="hero-note">
               Build hooks first, then scale winning variants with segment-level retries and QA.
             </p>
+            <div className="hero-orbit-grid">
+              <span className="orbit-chip">Concept Engine</span>
+              <span className="orbit-chip">Prompt Guardrails</span>
+              <span className="orbit-chip">Render Manifest</span>
+              <span className="orbit-chip">TV Gates</span>
+            </div>
             <Link href="/jobs/sample-job-id" className="btn btn-primary" style={{ width: "fit-content" }}>
               Open Manifest Demo
             </Link>
@@ -68,7 +114,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="section reveal delay-1">
+      <section className="section reveal delay-1 home-section">
         <p className="eyebrow">Creative Modes</p>
         <h2>Purpose-built paths for each ad intent</h2>
         <p className="section-intro">
@@ -97,17 +143,46 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="section media-library reveal delay-1">
+        <div className="library-head">
+          <p className="eyebrow">Visual Library</p>
+          <h2>Reference reels that shape atmosphere and continuity</h2>
+          <p className="section-intro">
+            Drop your own footage into the library rail to tune pacing, lens language, and
+            emotional temperature before scaling variants.
+          </p>
+        </div>
+        <div className="library-track">
+          {referenceLibrary.map((clip) => (
+            <article key={clip.id} className="library-item">
+              <video autoPlay loop muted playsInline preload="metadata" poster={clip.poster}>
+                <source src={clip.src} type="video/webm" />
+              </video>
+              <div className="library-meta">
+                <p>{clip.mode}</p>
+                <h3>{clip.title}</h3>
+              </div>
+            </article>
+          ))}
+        </div>
+        <p className="library-note">
+          Add more reels by placing files in `frontend/public` and duplicating one item in this
+          list.
+        </p>
+      </section>
+
       <section className="bento-section reveal delay-2">
         <p className="eyebrow">Creative Gallery</p>
         <h2>Cinematic content at scale</h2>
         <div className="bento-gallery">
           <div className="bento-item bento-large">
-            <video 
-              className="bento-video" 
-              autoPlay 
-              loop 
-              muted 
+            <video
+              className="bento-video"
+              autoPlay
+              loop
+              muted
               playsInline
+              preload="metadata"
             >
               <source src="/hero-bg-2.webm" type="video/webm" />
             </video>
@@ -171,6 +246,23 @@ export default function HomePage() {
             </Link>
           </div>
         </article>
+      </section>
+
+      <section className="section final-cta reveal delay-2">
+        <p className="eyebrow">Ready To Launch</p>
+        <h2>Move from concept to ad-ready cuts in one workspace.</h2>
+        <p className="section-intro">
+          Build your first run, approve TV gates when required, and ship creative variants faster
+          without losing visual control.
+        </p>
+        <div className="cta-row">
+          <Link className="btn btn-accent" href="/create">
+            Start Building
+          </Link>
+          <Link className="btn btn-secondary" href="/pricing">
+            See Credit Plans
+          </Link>
+        </div>
       </section>
 
       <script

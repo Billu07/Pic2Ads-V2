@@ -881,7 +881,7 @@ export function CreateJobWorkbench() {
                   {tvStoryboardShots.map((shot) => (
                     <div key={shot.shot_id} className="tv-item">
                       <p className="tv-item-title">
-                        {shot.shot_id} · {shot.duration_s}s
+                        {shot.shot_id} - {shot.duration_s}s
                       </p>
                       <p className="hint">{shot.purpose}</p>
                     </div>

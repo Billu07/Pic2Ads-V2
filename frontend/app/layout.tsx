@@ -40,7 +40,7 @@ export default function RootLayout({
           <header className="top-nav reveal">
             <div className="site-chrome">
               <Link href="/" className="brand brand-lockup">
-                <Image src="/logo.png" alt="Pic2Ads Logo" width={120} height={28} className="brand-logo" />
+                <Image src="/logo.png" alt="Pic2Ads Logo" width={220} height={220} className="brand-logo" />
               </Link>
               <nav className="nav-links">
                 <Link href="/ugc-video-ads">UGC</Link>
