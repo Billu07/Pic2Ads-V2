@@ -21,11 +21,11 @@ export default function UgcVideoAdsPage() {
       <section className="section story-shell reveal">
         <p className="eyebrow">Mode A · UGC Influencer</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
-          UGC ads tuned for velocity, honesty, and fast testing.
+          UGC ads tuned for rapid paid-social iteration
         </h1>
         <p className="section-intro">
-          Single-shot 10-15 second generation for rapid hook iteration, lightweight production,
-          and always-on paid social refreshes.
+          Single-shot 10-15 second generation for fast hook testing, lightweight production loops,
+          and weekly creative refresh cadence.
         </p>
       </section>
       <section className="split-feature reveal delay-1">
@@ -42,7 +42,7 @@ export default function UgcVideoAdsPage() {
           <ul className="line-list">
             <li>One render unit, one segment, no continuity overhead</li>
             <li>Seedance default path for cost-efficient throughput</li>
-            <li>Ideal mode for high-volume hook experimentation</li>
+            <li>Ideal mode for Hook Lab style experimentation</li>
           </ul>
         </article>
       </section>

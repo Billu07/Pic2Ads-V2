@@ -34,7 +34,7 @@ export default function TvCommercialAiPage() {
           <ul className="line-list">
             <li>Render units map cleanly to production planning logic</li>
             <li>Segment timelines enable review before final cut assembly</li>
-            <li>Structured outputs align with agency handoff process</li>
+            <li>Structured output aligns with agency handoff processes</li>
           </ul>
         </article>
         <article className="soft-panel atmospheric">

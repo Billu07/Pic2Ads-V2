@@ -32,7 +32,7 @@ export default function ProfessionalVideoAdsPage() {
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Narrative advantage</p>
           <ul className="line-list">
-            <li>Higher retention from friction-to-resolution structure</li>
+            <li>Higher retention from friction → resolution structure</li>
             <li>30-second arcs without abrupt visual drift</li>
             <li>Segment-level intervention for controlled regeneration</li>
           </ul>
@@ -42,7 +42,7 @@ export default function ProfessionalVideoAdsPage() {
           <ul className="line-list">
             <li>Continuous take via base + extend for temporal consistency</li>
             <li>Cut-chain for scene jumps and episodic storytelling</li>
-            <li>Manifest tracking for production-grade QA handoff</li>
+            <li>Manifest tracking enables production-grade QA handoff</li>
           </ul>
         </article>
       </section>

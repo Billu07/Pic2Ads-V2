@@ -27,11 +27,11 @@ export default function PricingPage() {
       <section className="section story-shell reveal">
         <p className="eyebrow">Pricing</p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3vw, 3rem)" }}>
-          Credits mapped to creative complexity.
+          Credits mapped to production complexity
         </h1>
         <p className="section-intro">
-          Keep cost controlled with Seedance-first generation, then escalate only when cinematic
-          quality is required.
+          Credits map to render complexity. Keep cost low with Seedance-first generation and only
+          use premium cinematic routes where the shot requires it.
         </p>
       </section>
       <section className="pricing-grid reveal delay-1">
