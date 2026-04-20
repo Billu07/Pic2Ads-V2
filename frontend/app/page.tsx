@@ -97,6 +97,56 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="bento-section reveal delay-2">
+        <p className="eyebrow">Creative Gallery</p>
+        <h2>Cinematic content at scale</h2>
+        <div className="bento-gallery">
+          <div className="bento-item bento-large">
+            <video 
+              className="bento-video" 
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+            >
+              <source src="/hero-bg-2.webm" type="video/webm" />
+            </video>
+            <div className="bento-content">
+              <h4>High-Fidelity Render</h4>
+              <p>Generated in Mode C</p>
+            </div>
+          </div>
+          <div className="bento-item bento-tall">
+            <div className="mesh-bg mesh-1" />
+            <div className="bento-content">
+              <h4>Scene Extraction</h4>
+              <p>Continuity mapped</p>
+            </div>
+          </div>
+          <div className="bento-item bento-wide">
+            <div className="mesh-bg mesh-2" />
+            <div className="bento-content">
+              <h4>Render Timeline</h4>
+              <p>Multi-shot assembly active</p>
+            </div>
+          </div>
+          <div className="bento-item">
+            <div className="mesh-bg mesh-3" />
+            <div className="bento-content">
+              <h4>Variant A</h4>
+              <p>UGC optimized</p>
+            </div>
+          </div>
+          <div className="bento-item">
+            <div className="mesh-bg mesh-1" style={{ animationDelay: '-5s' }} />
+            <div className="bento-content">
+              <h4>Variant B</h4>
+              <p>Narrative cut</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="split-feature reveal delay-2">
         <article className="soft-panel atmospheric">
           <p className="eyebrow">Execution Logic</p>
