@@ -24,7 +24,17 @@ export default function HomePage() {
   return (
     <main>
       <section className="full-bleed-hero">
-        <div className="hero-paint" aria-hidden="true" />
+        <video 
+          className="hero-video-bg" 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          poster="/hero-poster.jpg"
+        >
+          <source src="/hero-bg.webm" type="video/webm" />
+        </video>
+        <div className="hero-overlay" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-main reveal">
             <p className="eyebrow">AI Video Ad Platform</p>
