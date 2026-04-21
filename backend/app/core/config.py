@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +52,31 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator(
+        "database_url",
+        "supabase_db_url",
+        "supabase_pooler_url",
+        "openai_api_key",
+        "kie_api_key",
+        "kie_callback_url",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_optional_string(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().strip('"').strip("'")
+        return normalized or None
+
+    @field_validator("kie_api_key")
+    @classmethod
+    def _normalize_kie_api_key(cls, value: str | None) -> str | None:
+        if not value:
+            return value
+        if value.lower().startswith("bearer "):
+            return value[7:].strip()
+        return value
 
     @property
     def resolved_database_url(self) -> str | None:

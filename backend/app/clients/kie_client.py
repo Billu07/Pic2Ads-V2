@@ -11,11 +11,15 @@ class KieClient:
 
     @property
     def _headers(self) -> dict[str, str]:
-        if not settings.kie_api_key:
+        api_key = settings.kie_api_key
+        if not api_key:
             raise RuntimeError("KIE_API_KEY is not configured.")
         return {
-            "Authorization": f"Bearer {settings.kie_api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            # Kept for compatibility with providers/proxies that also read x-api-key.
+            "x-api-key": api_key,
         }
 
     async def create_task(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -34,4 +38,3 @@ class KieClient:
 
 
 kie_client = KieClient()
-
