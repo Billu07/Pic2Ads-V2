@@ -1206,6 +1206,117 @@ main {
   gap: 0.9rem;
 }
 
+.generated-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.generated-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.generated-subline {
+  margin: 0.35rem 0 0;
+}
+
+.generated-filters {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.generated-filter-chip {
+  border: 1px solid rgba(220, 236, 240, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #c9dce3;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.42rem 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generated-filter-chip:hover {
+  border-color: rgba(95, 216, 203, 0.48);
+  color: #e8f3f6;
+}
+
+.generated-filter-chip.active {
+  border-color: rgba(95, 216, 203, 0.72);
+  background: rgba(95, 216, 203, 0.12);
+  color: #c9f9f3;
+}
+
+.generated-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.generated-card {
+  border: 1px solid rgba(220, 236, 240, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(9, 22, 29, 0.84), rgba(4, 12, 16, 0.92));
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.generated-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.generated-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(221, 237, 241, 0.16);
+}
+
+.generated-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #189d92 0%, #7ce5db 100%);
+  transition: width 0.3s ease;
+}
+
+.generated-preview {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(220, 236, 240, 0.2);
+  background: rgba(5, 12, 16, 0.9);
+}
+
+.generated-placeholder {
+  display: grid;
+  place-items: center;
+  color: #9fb4bc;
+  font-size: 0.84rem;
+}
+
+.generated-empty {
+  border: 1px solid rgba(220, 236, 240, 0.2);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(8, 20, 25, 0.66);
+  display: grid;
+  gap: 0.45rem;
+}
+
 .variant-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1661,7 +1772,8 @@ main {
 
   .segment-grid,
   .output-grid,
-  .variant-option-list {
+  .variant-option-list,
+  .generated-grid {
     grid-template-columns: 1fr;
   }
 

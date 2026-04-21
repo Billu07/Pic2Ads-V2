@@ -80,6 +80,21 @@ export type JobCreatedResponse = {
   duration_s: number;
 };
 
+export type JobListItem = {
+  id: string;
+  status: string;
+  mode: CreateJobMode;
+  duration_s: number;
+  created_at: string;
+};
+
+export type JobListResponse = {
+  items: JobListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type LocalPipelineResponse = {
   job_id: string;
   product_intel_status: string;
@@ -229,6 +244,18 @@ export async function createJob(payload: CreateJobPayload): Promise<JobCreatedRe
   }
 
   return (await response.json()) as JobCreatedResponse;
+}
+
+export async function listJobs(limit = 24, offset = 0): Promise<JobListResponse> {
+  const response = await fetch(`/api/jobs?limit=${limit}&offset=${offset}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `list_jobs_failed_${response.status}`);
+  }
+  return (await response.json()) as JobListResponse;
 }
 
 export async function runLocalPipeline(

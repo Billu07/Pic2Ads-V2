@@ -197,6 +197,43 @@ class JobService:
             created_at=created_at_iso,
         )
 
+    def list_jobs(self, *, limit: int, offset: int) -> tuple[list[JobStatusResponse], int]:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("select count(*) as total from public.ad_job")
+                total_row = cur.fetchone()
+                total = int(total_row["total"]) if total_row else 0
+
+                cur.execute(
+                    """
+                    select id, status::text, mode::text, duration_s, created_at
+                    from public.ad_job
+                    order by created_at desc
+                    limit %s
+                    offset %s
+                    """,
+                    (limit, offset),
+                )
+                rows = cur.fetchall()
+
+        items: list[JobStatusResponse] = []
+        for row in rows:
+            created_at = row["created_at"]
+            if isinstance(created_at, datetime):
+                created_at_iso = created_at.astimezone(timezone.utc).isoformat()
+            else:
+                created_at_iso = datetime.now(timezone.utc).isoformat()
+            items.append(
+                JobStatusResponse(
+                    id=str(row["id"]),
+                    status=str(row["status"]),
+                    mode=str(row["mode"]),
+                    duration_s=int(row["duration_s"]),
+                    created_at=created_at_iso,
+                )
+            )
+        return items, total
+
     def get_job_product_context(self, job_id: str) -> tuple[str, str] | None:
         with get_db_connection() as conn:
             with conn.cursor() as cur:

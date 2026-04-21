@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from psycopg import Error as PsycopgError
 
 from app.core.config import settings
@@ -8,6 +8,8 @@ from app.models.jobs import (
     CreateJobRequest,
     DispatchWorkflowResponse,
     JobResponse,
+    JobListItem,
+    JobListResponse,
     JobStatusResponse,
     LocalPipelineRunRequest,
     LocalPipelineRunResponse,
@@ -30,6 +32,35 @@ from app.services.scripts import script_service
 from app.services.storyboard import storyboard_service
 
 router = APIRouter(prefix="/jobs")
+
+
+@router.get("", response_model=JobListResponse)
+def list_jobs(
+    limit: int = Query(default=24, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> JobListResponse:
+    try:
+        items, total = job_service.list_jobs(limit=limit, offset=offset)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PsycopgError as exc:
+        raise HTTPException(status_code=500, detail="db_read_failed") from exc
+
+    return JobListResponse(
+        items=[
+            JobListItem(
+                id=item.id,
+                status=item.status,
+                mode=item.mode,
+                duration_s=item.duration_s,
+                created_at=item.created_at,
+            )
+            for item in items
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=JobResponse)

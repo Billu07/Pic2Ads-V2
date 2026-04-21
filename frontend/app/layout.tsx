@@ -77,6 +77,7 @@ export default function RootLayout({
                 <Link href="/ugc-video-ads">UGC</Link>
                 <Link href="/professional-video-ads">Professional</Link>
                 <Link href="/tv-commercial-ai">TV</Link>
+                <Link href="/generated">Generated</Link>
                 <Link href="/pricing">Pricing</Link>
                 <Link href="/create" className="nav-action">
                   Start Building

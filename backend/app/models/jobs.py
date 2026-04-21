@@ -35,6 +35,21 @@ class JobStatusResponse(JobResponse):
     created_at: str
 
 
+class JobListItem(BaseModel):
+    id: str
+    status: str
+    mode: str
+    duration_s: int
+    created_at: str
+
+
+class JobListResponse(BaseModel):
+    items: list[JobListItem] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 0
+    offset: int = 0
+
+
 class DispatchWorkflowResponse(BaseModel):
     job_id: str
     temporal_workflow_id: str

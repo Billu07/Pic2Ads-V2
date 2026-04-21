@@ -1028,6 +1028,11 @@ export function CreateJobWorkbench() {
               ? "Track previous renders from here, even after starting a new job."
               : "No previous jobs yet. Create one and it will appear here."}
           </p>
+          <div className="cta-row compact-actions">
+            <Link href="/generated" className="btn btn-secondary">
+              Open Generated Library
+            </Link>
+          </div>
           {recentJobs.length > 0 && (
             <div className="tv-list-block">
               <div className="tv-list">
