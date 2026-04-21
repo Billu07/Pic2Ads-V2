@@ -122,9 +122,13 @@ class SeedancePipelineService:
                 "status": "queued",
                 "deduped": False,
             }
-        except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
+        except httpx.HTTPStatusError as exc:
             render_unit_service.set_segment_status(segment_id=segment_id, status="failed")
-            raise RuntimeError("fal_submit_failed") from exc
+            status_code = exc.response.status_code if exc.response is not None else 0
+            raise RuntimeError(f"fal_submit_http_{status_code}") from exc
+        except httpx.HTTPError as exc:
+            render_unit_service.set_segment_status(segment_id=segment_id, status="failed")
+            raise RuntimeError("fal_submit_network_error") from exc
 
         task_id = self._extract_request_id(submit_response)
         if not isinstance(task_id, str) or not task_id:
