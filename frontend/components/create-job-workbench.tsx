@@ -50,6 +50,16 @@ type FormState = {
   generate_audio: boolean;
 };
 
+type RecentJobEntry = {
+  id: string;
+  mode: CreateJobMode;
+  created_at: string;
+  last_pipeline_status: string | null;
+};
+
+const RECENT_JOBS_STORAGE_KEY = "pic2ads_recent_jobs_v1";
+const MAX_RECENT_JOBS = 12;
+
 const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; note: string }> = {
   ugc: {
     label: "Mode A - UGC",
@@ -150,6 +160,19 @@ function parseCsvList(input: string): string[] {
     .slice(0, 6);
 }
 
+function formatRecentTimeLabel(iso: string): string {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) {
+    return "unknown time";
+  }
+  return dt.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function CreateJobWorkbench() {
   const [form, setForm] = useState<FormState>({
     mode: "ugc",
@@ -181,6 +204,7 @@ export function CreateJobWorkbench() {
   const [tvStoryboardShots, setTvStoryboardShots] = useState<TvStoryboardShot[]>([]);
   const [scriptVariants, setScriptVariants] = useState<ScriptVariant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
+  const [recentJobs, setRecentJobs] = useState<RecentJobEntry[]>([]);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [modalVariantId, setModalVariantId] = useState<string>("");
   const [shouldAutoRunAfterVariantSelect, setShouldAutoRunAfterVariantSelect] = useState(false);
@@ -204,6 +228,78 @@ export function CreateJobWorkbench() {
     setLocalPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(RECENT_JOBS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+      const normalized = parsed
+        .map((item) => {
+          if (
+            !item ||
+            typeof item !== "object" ||
+            typeof (item as { id?: unknown }).id !== "string" ||
+            typeof (item as { mode?: unknown }).mode !== "string" ||
+            typeof (item as { created_at?: unknown }).created_at !== "string"
+          ) {
+            return null;
+          }
+          const mode = (item as { mode: string }).mode;
+          if (mode !== "ugc" && mode !== "pro_arc" && mode !== "tv") {
+            return null;
+          }
+          const lastPipelineRaw = (item as { last_pipeline_status?: unknown }).last_pipeline_status;
+          const lastPipeline =
+            typeof lastPipelineRaw === "string" ? lastPipelineRaw : lastPipelineRaw === null ? null : null;
+          return {
+            id: (item as { id: string }).id,
+            mode,
+            created_at: (item as { created_at: string }).created_at,
+            last_pipeline_status: lastPipeline,
+          } satisfies RecentJobEntry;
+        })
+        .filter((item): item is RecentJobEntry => item !== null)
+        .slice(0, MAX_RECENT_JOBS);
+      setRecentJobs(normalized);
+    } catch {
+      setRecentJobs([]);
+    }
+  }, []);
+
+  const upsertRecentJob = useCallback(
+    (entry: RecentJobEntry) => {
+      setRecentJobs((prev) => {
+        const deduped = [entry, ...prev.filter((item) => item.id !== entry.id)].slice(0, MAX_RECENT_JOBS);
+        try {
+          window.localStorage.setItem(RECENT_JOBS_STORAGE_KEY, JSON.stringify(deduped));
+        } catch {
+          // Ignore localStorage write failures.
+        }
+        return deduped;
+      });
+    },
+    []
+  );
+
+  const updateRecentJobStatus = useCallback((jobId: string, status: string) => {
+    setRecentJobs((prev) => {
+      const next = prev.map((item) =>
+        item.id === jobId ? { ...item, last_pipeline_status: status } : item
+      );
+      try {
+        window.localStorage.setItem(RECENT_JOBS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage write failures.
+      }
+      return next;
+    });
+  }, []);
 
   function setMode(mode: CreateJobMode) {
     const preset = MODE_PRESETS[mode];
@@ -281,6 +377,7 @@ export function CreateJobWorkbench() {
         selected_variant_id: job.mode === "ugc" ? selectedForRun : undefined,
       });
       setPipelineResult(runResult);
+      updateRecentJobStatus(job.id, runResult.video_generate_status);
     } catch (runError) {
       setError(summarizeError(runError));
     } finally {
@@ -479,6 +576,12 @@ export function CreateJobWorkbench() {
 
       const created = await createJob(payload);
       setCreatedJob(created);
+      upsertRecentJob({
+        id: created.id,
+        mode: created.mode,
+        created_at: new Date().toISOString(),
+        last_pipeline_status: null,
+      });
       const firstVariantId = await handleRunScripts(created.id);
       if (created.mode === "tv") {
         await refreshTvWorkflow(created.id);
@@ -915,6 +1018,37 @@ export function CreateJobWorkbench() {
               Scripts: {pipelineResult.script_status} | TV gates: {pipelineResult.tv_gate_status} |
               Duration plan: {pipelineResult.duration_plan_status}
             </p>
+          )}
+        </div>
+
+        <div className="status-box">
+          <p className="status-title">Recent Jobs</p>
+          <p className="caption status-copy">
+            {recentJobs.length > 0
+              ? "Track previous renders from here, even after starting a new job."
+              : "No previous jobs yet. Create one and it will appear here."}
+          </p>
+          {recentJobs.length > 0 && (
+            <div className="tv-list-block">
+              <div className="tv-list">
+                {recentJobs.map((job) => (
+                  <div key={job.id} className="tv-item">
+                    <p className="tv-item-title">{job.id}</p>
+                    <p className="hint">
+                      Mode: {job.mode} | {formatRecentTimeLabel(job.created_at)}
+                    </p>
+                    <p className="hint">
+                      {job.last_pipeline_status ? `Last: ${job.last_pipeline_status}` : "Last: pending run"}
+                    </p>
+                    <div className="cta-row compact-actions">
+                      <Link href={`/jobs/${job.id}`} className="btn btn-secondary">
+                        Open Manifest
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
