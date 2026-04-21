@@ -4,18 +4,12 @@ import { siteConfig } from "@/lib/site";
 
 type Params = { params: Promise<{ jobId: string }> };
 
-export async function POST(request: Request, { params }: Params) {
+export async function POST(_: Request, { params }: Params) {
   const { jobId } = await params;
-  const rawBody = await request.text();
-  const response = await fetch(
-    `${siteConfig.apiBaseUrl}/jobs/${encodeURIComponent(jobId)}/pipeline/run-local`,
-    {
-      method: "POST",
-      headers: rawBody ? { "Content-Type": "application/json" } : undefined,
-      body: rawBody || undefined,
-      cache: "no-store",
-    }
-  );
+  const response = await fetch(`${siteConfig.apiBaseUrl}/jobs/${encodeURIComponent(jobId)}/scripts`, {
+    method: "POST",
+    cache: "no-store",
+  });
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {

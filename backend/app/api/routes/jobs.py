@@ -9,6 +9,7 @@ from app.models.jobs import (
     DispatchWorkflowResponse,
     JobResponse,
     JobStatusResponse,
+    LocalPipelineRunRequest,
     LocalPipelineRunResponse,
     TvConceptSelectRequest,
     TvConceptSelectResponse,
@@ -139,7 +140,10 @@ async def dispatch_job(job_id: str) -> DispatchWorkflowResponse:
 
 
 @router.post("/{job_id}/pipeline/run-local", response_model=LocalPipelineRunResponse)
-async def run_local_pipeline(job_id: str) -> LocalPipelineRunResponse:
+async def run_local_pipeline(
+    job_id: str,
+    req: LocalPipelineRunRequest | None = None,
+) -> LocalPipelineRunResponse:
     try:
         found = job_service.get_job(job_id)
     except RuntimeError as exc:
@@ -195,10 +199,28 @@ async def run_local_pipeline(job_id: str) -> LocalPipelineRunResponse:
 
     await duration_planner_service.ensure_units_for_job(job_id)
     units = render_unit_service.list_units(job_id).units
+    generate_audio = True if req is None else bool(req.generate_audio)
+    render_all_variants = False if req is None else bool(req.render_all_variants)
+    selected_variant_id = ""
+    if req and isinstance(req.selected_variant_id, str):
+        selected_variant_id = req.selected_variant_id.strip()
+
+    allowed_sequences: set[int] | None = None
+    if found.mode == "ugc" and not render_all_variants:
+        target_sequence = 0
+        if selected_variant_id:
+            for idx, variant in enumerate(scripts.output.scripts):
+                if variant.variant_id == selected_variant_id:
+                    target_sequence = idx
+                    break
+        allowed_sequences = {target_sequence}
+
     submitted = 0
     failed = 0
     last_error: str | None = None
     for unit in units:
+        if allowed_sequences is not None and unit.sequence not in allowed_sequences:
+            continue
         for seg in unit.segments:
             if seg.status == "queued":
                 try:
@@ -206,6 +228,7 @@ async def run_local_pipeline(job_id: str) -> LocalPipelineRunResponse:
                         job_id=job_id,
                         segment_id=seg.id,
                         idempotency_key=f"local-{job_id}-seg-{seg.id}",
+                        generate_audio=generate_audio,
                     )
                 except RuntimeError as exc:
                     failed += 1

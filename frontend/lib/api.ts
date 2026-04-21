@@ -91,6 +91,37 @@ export type LocalPipelineResponse = {
   video_generate_status: string;
 };
 
+export type RunLocalPipelinePayload = {
+  generate_audio?: boolean;
+  render_all_variants?: boolean;
+  selected_variant_id?: string;
+};
+
+export type ScriptVariant = {
+  variant_id: string;
+  angle: string;
+  setting: string;
+  tone: string;
+  filming_method: string;
+  first_frame_description: string;
+  product_feature_focus: string;
+  hook: string;
+  render_pattern_hint: string;
+  segment_count_hint: number | null;
+  authenticity_markers: string[];
+};
+
+export type ScriptRunResponse = {
+  job_id: string;
+  cached: boolean;
+  agent_name: string;
+  prompt_version: string;
+  output: {
+    mode: CreateJobMode;
+    scripts: ScriptVariant[];
+  };
+};
+
 export type TvGateStatus = {
   job_id: string;
   required: boolean;
@@ -200,9 +231,14 @@ export async function createJob(payload: CreateJobPayload): Promise<JobCreatedRe
   return (await response.json()) as JobCreatedResponse;
 }
 
-export async function runLocalPipeline(jobId: string): Promise<LocalPipelineResponse> {
+export async function runLocalPipeline(
+  jobId: string,
+  payload?: RunLocalPipelinePayload
+): Promise<LocalPipelineResponse> {
   const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/run-local`, {
     method: "POST",
+    headers: payload ? { "Content-Type": "application/json" } : undefined,
+    body: payload ? JSON.stringify(payload) : undefined,
   });
 
   if (!response.ok) {
@@ -211,6 +247,19 @@ export async function runLocalPipeline(jobId: string): Promise<LocalPipelineResp
   }
 
   return (await response.json()) as LocalPipelineResponse;
+}
+
+export async function runScripts(jobId: string): Promise<ScriptRunResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/scripts`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `run_scripts_failed_${response.status}`);
+  }
+
+  return (await response.json()) as ScriptRunResponse;
 }
 
 export async function getTvGateStatus(jobId: string): Promise<TvGateStatus> {

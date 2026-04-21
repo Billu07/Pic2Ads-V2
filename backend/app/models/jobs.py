@@ -52,6 +52,12 @@ class LocalPipelineRunResponse(BaseModel):
     video_generate_status: str
 
 
+class LocalPipelineRunRequest(BaseModel):
+    generate_audio: bool = True
+    render_all_variants: bool = False
+    selected_variant_id: str | None = Field(default=None, max_length=80)
+
+
 class TvConceptSelectRequest(BaseModel):
     concept_id: str = Field(min_length=1, max_length=120)
 

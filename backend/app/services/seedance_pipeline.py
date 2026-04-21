@@ -33,6 +33,7 @@ class SeedancePipelineService:
         job_id: str,
         segment_id: int,
         idempotency_key: str | None = None,
+        generate_audio: bool = True,
     ) -> dict[str, Any]:
         segment = render_unit_service.get_segment_for_job(job_id=job_id, segment_id=segment_id)
         if segment is None:
@@ -49,7 +50,7 @@ class SeedancePipelineService:
             "duration": segment.duration_s,
             "aspect_ratio": "9:16",
             "resolution": "720p",
-            "generate_audio": False,
+            "generate_audio": bool(generate_audio),
             "image_url": product_image_url,
         }
 

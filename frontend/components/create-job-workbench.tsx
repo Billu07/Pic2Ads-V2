@@ -20,7 +20,9 @@ import {
   LocalPipelineResponse,
   listTvConcepts,
   MediaUploadResponse,
+  runScripts,
   runLocalPipeline,
+  ScriptVariant,
   selectTvConcept,
   TvConcept,
   TvGateStatus,
@@ -45,6 +47,8 @@ type FormState = {
   cta_style: CreativeCtaStyle;
   must_include_csv: string;
   must_avoid_csv: string;
+  generate_audio: boolean;
+  render_all_variants: boolean;
 };
 
 const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; note: string }> = {
@@ -165,6 +169,8 @@ export function CreateJobWorkbench() {
     cta_style: CREATIVE_PRESETS.ugc.cta_style,
     must_include_csv: "",
     must_avoid_csv: "",
+    generate_audio: true,
+    render_all_variants: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -175,6 +181,8 @@ export function CreateJobWorkbench() {
   const [tvGateState, setTvGateState] = useState<TvGateStatus | null>(null);
   const [tvConcepts, setTvConcepts] = useState<TvConcept[]>([]);
   const [tvStoryboardShots, setTvStoryboardShots] = useState<TvStoryboardShot[]>([]);
+  const [scriptVariants, setScriptVariants] = useState<ScriptVariant[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -231,6 +239,18 @@ export function CreateJobWorkbench() {
     }
     refreshTvWorkflow(createdJob.id).catch(() => {});
   }, [createdJob, refreshTvWorkflow]);
+
+  async function handleRunScripts(jobId: string): Promise<string | null> {
+    const scriptRun = await runScripts(jobId);
+    const variants = scriptRun.output.scripts ?? [];
+    setScriptVariants(variants);
+    if (variants.length > 0) {
+      const firstId = variants[0].variant_id;
+      setSelectedVariantId((prev) => prev || firstId);
+      return firstId;
+    }
+    return null;
+  }
 
   async function handleGenerateTvConcepts() {
     if (!createdJob) {
@@ -352,6 +372,8 @@ export function CreateJobWorkbench() {
     setTvGateState(null);
     setTvConcepts([]);
     setTvStoryboardShots([]);
+    setScriptVariants([]);
+    setSelectedVariantId("");
 
     let resolvedImageUrl = form.product_image_url.trim();
     if (!resolvedImageUrl && selectedFile) {
@@ -401,6 +423,7 @@ export function CreateJobWorkbench() {
 
       const created = await createJob(payload);
       setCreatedJob(created);
+      const firstVariantId = await handleRunScripts(created.id);
       if (created.mode === "tv") {
         await refreshTvWorkflow(created.id);
       }
@@ -408,7 +431,14 @@ export function CreateJobWorkbench() {
       if (form.auto_run_local) {
         setIsRunning(true);
         try {
-          const runResult = await runLocalPipeline(created.id);
+          const runResult = await runLocalPipeline(created.id, {
+            generate_audio: form.generate_audio,
+            render_all_variants: form.mode === "ugc" ? form.render_all_variants : true,
+            selected_variant_id:
+              form.mode === "ugc" && !form.render_all_variants
+                ? selectedVariantId || firstVariantId || undefined
+                : undefined,
+          });
           setPipelineResult(runResult);
         } finally {
           setIsRunning(false);
@@ -428,7 +458,12 @@ export function CreateJobWorkbench() {
     setError(null);
     setIsRunning(true);
     try {
-      const runResult = await runLocalPipeline(createdJob.id);
+      const runResult = await runLocalPipeline(createdJob.id, {
+        generate_audio: form.generate_audio,
+        render_all_variants: createdJob.mode === "ugc" ? form.render_all_variants : true,
+        selected_variant_id:
+          createdJob.mode === "ugc" && !form.render_all_variants ? selectedVariantId || undefined : undefined,
+      });
       setPipelineResult(runResult);
     } catch (runError) {
       setError(summarizeError(runError));
@@ -743,6 +778,28 @@ export function CreateJobWorkbench() {
             />
             Auto-run local pipeline after creation
           </label>
+          <label className="inline-toggle">
+            <input
+              type="checkbox"
+              checked={form.generate_audio}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, generate_audio: event.target.checked }))
+              }
+            />
+            Generate audio (default on)
+          </label>
+          {form.mode === "ugc" && (
+            <label className="inline-toggle">
+              <input
+                type="checkbox"
+                checked={form.render_all_variants}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, render_all_variants: event.target.checked }))
+                }
+              />
+              Render all UGC variants (3x credits)
+            </label>
+          )}
 
           <div className="cta-row form-actions">
             <button
@@ -814,6 +871,53 @@ export function CreateJobWorkbench() {
             </p>
           )}
         </div>
+
+        {createdJob && (
+          <div className="status-box">
+            <p className="status-title">Script Review</p>
+            <p className="caption status-copy">
+              {scriptVariants.length > 0
+                ? `${scriptVariants.length} script variants ready`
+                : "Generate scripts to choose a render direction"}
+            </p>
+            <div className="cta-row compact-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => handleRunScripts(createdJob.id)}
+                disabled={isSubmitting || isRunning}
+              >
+                Refresh Scripts
+              </button>
+            </div>
+
+            {scriptVariants.length > 0 && (
+              <div className="tv-list-block">
+                <div className="tv-list">
+                  {scriptVariants.map((variant) => (
+                    <div key={variant.variant_id} className="tv-item">
+                      <p className="tv-item-title">{variant.variant_id}</p>
+                      <p className="hint">{variant.hook}</p>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setSelectedVariantId(variant.variant_id)}
+                        disabled={createdJob.mode !== "ugc"}
+                      >
+                        {selectedVariantId === variant.variant_id ? "Selected" : "Select Script"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {createdJob.mode === "ugc" && !form.render_all_variants && (
+              <p className="hint">
+                UGC render will submit one variant: `{selectedVariantId || scriptVariants[0]?.variant_id || "first"}`.
+              </p>
+            )}
+          </div>
+        )}
 
         {createdJob?.mode === "tv" && (
           <div className="status-box">

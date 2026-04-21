@@ -8,7 +8,7 @@ class SeedanceSubmitRequest(BaseModel):
     duration: int | Literal["auto"] = "auto"
     aspect_ratio: str = Field(default="9:16", pattern=r"^(auto|1:1|4:3|3:4|16:9|9:16|21:9)$")
     resolution: str = Field(default="720p", pattern=r"^(480p|720p)$")
-    generate_audio: bool = False
+    generate_audio: bool = True
     seed: int | None = None
     end_user_id: str | None = None
 
