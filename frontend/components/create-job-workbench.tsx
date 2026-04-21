@@ -11,6 +11,7 @@ import {
   createJob,
   CreateJobMode,
   DeliverableAspect,
+  JobLanguage,
   generateTvConcepts,
   generateTvStoryboard,
   getTvGateStatus,
@@ -29,6 +30,7 @@ import {
 
 type FormState = {
   mode: CreateJobMode;
+  language: JobLanguage;
   duration_s: number;
   product_name: string;
   product_image_url: string;
@@ -115,6 +117,13 @@ const CTA_STYLE_OPTIONS: Array<{ value: CreativeCtaStyle; label: string }> = [
   { value: "urgency_push", label: "Urgency Push" },
 ];
 
+const LANGUAGE_OPTIONS: Array<{ value: JobLanguage; label: string }> = [
+  { value: "en", label: "English" },
+  { value: "bn", label: "Bengali" },
+  { value: "hi", label: "Hindi" },
+  { value: "es", label: "Spanish" },
+];
+
 function summarizeError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "Unexpected request failure.";
@@ -141,6 +150,7 @@ function parseCsvList(input: string): string[] {
 export function CreateJobWorkbench() {
   const [form, setForm] = useState<FormState>({
     mode: "ugc",
+    language: "en",
     duration_s: MODE_PRESETS.ugc.duration,
     product_name: "",
     product_image_url: "",
@@ -370,6 +380,7 @@ export function CreateJobWorkbench() {
       const mustAvoid = parseCsvList(form.must_avoid_csv);
       const payload = {
         mode: form.mode,
+        language: form.language,
         duration_s: form.duration_s,
         product: {
           product_name: form.product_name.trim(),
@@ -448,6 +459,24 @@ export function CreateJobWorkbench() {
 
         <form onSubmit={handleSubmit} className="job-form">
           <div className="field-grid">
+            <div className="field">
+              <label htmlFor="language">Language</label>
+              <select
+                id="language"
+                className="select"
+                value={form.language}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, language: event.target.value as JobLanguage }))
+                }
+              >
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="field">
               <label htmlFor="product_name">Product Name</label>
               <input

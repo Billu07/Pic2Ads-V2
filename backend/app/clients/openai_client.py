@@ -98,6 +98,7 @@ class OpenAIClient:
                                 "- mention only product features present in product_intel.visible_claims "
                                 "or clearly implied by affordances.\n"
                                 "- obey prompt pack directives and creative decisions.\n"
+                                "- write all dialogue and narrative fields in the requested language.\n"
                             ),
                         }
                     ],
@@ -109,6 +110,8 @@ class OpenAIClient:
                             "type": "input_text",
                             "text": (
                                 f"mode={payload.mode}\n"
+                                f"language_code={payload.language_code}\n"
+                                f"language_name={payload.language_name}\n"
                                 f"duration_s={duration_target}\n"
                                 f"product_name={payload.product_name}\n"
                                 f"brief={payload.brief or 'none'}\n"
@@ -128,6 +131,7 @@ class OpenAIClient:
                                 "render_pattern_hint=tv_shotlist and segment_count_hint between 3 and 8.\n"
                                 "Each variant must include timed dialogue_beats and visual_beats that fit duration.\n"
                                 "Keep lines short and human. Avoid polished ad language.\n"
+                                "All user-facing text must be in language_name with native phrasing.\n"
                                 "Use creative_decisions as hard steering for hook style, offer angle, tone, and CTA behavior.\n"
                             ),
                         }
@@ -288,6 +292,7 @@ class OpenAIClient:
                                 "Each concept must be materially different in creative angle.\n"
                                 "No invented product claims. Keep product fidelity grounded in provided intel.\n"
                                 "Follow prompt pack directives and creative decisions for persuasion structure.\n"
+                                "Write all concept text in the requested language.\n"
                             ),
                         }
                     ],
@@ -298,6 +303,8 @@ class OpenAIClient:
                         {
                             "type": "input_text",
                             "text": (
+                                f"language_code={payload.language_code}\n"
+                                f"language_name={payload.language_name}\n"
                                 f"product_name={payload.product_name}\n"
                                 f"duration_s={payload.duration_s}\n"
                                 f"brief={payload.brief or 'none'}\n"
@@ -311,6 +318,7 @@ class OpenAIClient:
                                 "- concept_id values must be: concept_1, concept_2, concept_3\n"
                                 "- each concept includes title, logline, treatment, audience_angle, style_notes\n"
                                 "- treatments should be production-usable one-page direction, not scripts\n"
+                                "- write title/logline/treatment/audience_angle/style_notes in language_name\n"
                             ),
                         }
                     ],
@@ -357,6 +365,7 @@ class OpenAIClient:
                                 "Shots must be 1-15 seconds each and ordered.\n"
                                 "No overlays, no on-screen text, no invented product claims.\n"
                                 "Maintain alignment with prompt pack directives and creative decisions.\n"
+                                "Write all shot descriptions and purposes in the requested language.\n"
                             ),
                         }
                     ],
@@ -367,6 +376,8 @@ class OpenAIClient:
                         {
                             "type": "input_text",
                             "text": (
+                                f"language_code={payload.language_code}\n"
+                                f"language_name={payload.language_name}\n"
                                 f"product_name={payload.product_name}\n"
                                 f"duration_s={payload.duration_s}\n"
                                 f"brief={payload.brief or 'none'}\n"

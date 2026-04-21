@@ -22,14 +22,14 @@ This is the first implementation step for Pic2Ads.
 - Prompt orchestration + creative decision endpoints:
   - `GET /v1/jobs/{job_id}/creative-decisions`
   - `PUT /v1/jobs/{job_id}/creative-decisions`
-- Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing `taskId` mappings (supports `Idempotency-Key`)
+- Seedance submit endpoint (`POST /v1/jobs/{job_id}/seedance/submit`) storing Fal `request_id` mappings (supports `Idempotency-Key`)
 - Render graph endpoints:
   - `POST /v1/jobs/{job_id}/units` (create render unit + segments)
   - `GET /v1/jobs/{job_id}/units` (list units + segment state)
 - Agent base interfaces and shared typed models
 - SQL migration runner for Supabase/Postgres
 - Temporal workflow/worker skeleton (optional, env-gated)
-- Seedance callback skeleton (`POST /v1/webhooks/kie`) with taskId-based status correlation
+- Seedance callback endpoint (`POST /v1/webhooks/fal`) with request-id status correlation
 - Seedance polling sync endpoint (`POST /v1/jobs/{job_id}/seedance/tasks/{task_id}/sync`)
 - Seedance retry runner endpoint (`POST /v1/jobs/seedance/retries/run`) to process due retries
 - Export manifest endpoint (`GET /v1/jobs/{job_id}/export/manifest`) for editor/export timeline
@@ -39,6 +39,7 @@ This is the first implementation step for Pic2Ads.
 - Due retries are now claimable/resubmittable from `next_retry_at` with stale-task callback protection
 - Segment regen endpoint: `POST /v1/jobs/{job_id}/segments/{segment_id}/regen`
 - `run-local` now runs: Product Intel -> Brand Strategist -> Casting Director -> Screenwriter -> Duration Planner -> Seedance submit
+- Job creation now supports language selection: `en`, `bn`, `hi`, `es` for script/concept/storyboard generation
 - For `mode=tv`, `run-local` blocks render submission until:
   - concept is selected
   - storyboard is generated for that selected concept
@@ -68,17 +69,17 @@ Note: `temporalio` currently targets Python 3.11/3.12 in practice. If your syste
 
 ## Environment
 Copy `.env.example` to `.env` and adjust values.
-`KIE_CALLBACK_URL` must point to this backend service (for example `https://api.pic2ads.io/v1/webhooks/kie`), not a frontend-only host.
+`FAL_CALLBACK_URL` must point to this backend service (for example `https://api.pic2ads.io/v1/webhooks/fal`), not a frontend-only host.
 
 Retry worker knobs:
-- `KIE_RETRY_WORKER_ENABLED=true` to run a retry loop inside API process
-- `KIE_RETRY_WORKER_INTERVAL_SECONDS=20`
-- `KIE_RETRY_WORKER_BATCH_SIZE=10`
+- `FAL_RETRY_WORKER_ENABLED=true` to run a retry loop inside API process
+- `FAL_RETRY_WORKER_INTERVAL_SECONDS=20`
+- `FAL_RETRY_WORKER_BATCH_SIZE=10`
 
 Run standalone retry worker process:
 - `python -m app.workers.seedance_retry_worker`
 
 ## Next build steps
-1. Add signed webhook verification once Kie signature format is finalized
+1. Add signed webhook verification against Fal request signatures
 2. Add segment-level QA checks and automatic regen triggers
 3. Add editor/export pipeline consuming segment `output_video_url` fields

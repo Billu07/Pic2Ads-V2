@@ -40,4 +40,4 @@
   ss -ltnp | grep ':80\|:443\|:8000'
 
   # Check current env values quickly (without printing secrets)
-  grep -E '^(APP_ENV|API_PREFIX|KIE_CALLBACK_URL|KIE_RETRY_WORKER_ENABLED)=' /srv/apps/pic2ads/backend/.env
+  grep -E '^(APP_ENV|API_PREFIX|FAL_CALLBACK_URL|FAL_RETRY_WORKER_ENABLED)=' /srv/apps/pic2ads/backend/.env

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from psycopg import Error as PsycopgError
 
 from app.core.config import settings
-from app.models.webhooks import KieWebhookPayload, KieWebhookResponse
+from app.models.webhooks import FalWebhookPayload, FalWebhookResponse
 from app.services.jobs import job_service
 from app.services.provider_payloads import extract_provider_artifacts
 from app.services.provider_tasks import provider_task_service
@@ -19,24 +19,27 @@ def _is_stale_provider_task_status(status: str | None) -> bool:
     return status in {"retried", "superseded"}
 
 
-def _extract_job_id(payload: KieWebhookPayload, query_job_id: str | None) -> str | None:
+def _extract_job_id(payload: FalWebhookPayload, query_job_id: str | None) -> str | None:
     if query_job_id:
         return query_job_id
     if payload.job_id:
         return payload.job_id
-    if payload.data and isinstance(payload.data, dict):
-        direct = payload.data.get("job_id")
-        if isinstance(direct, str) and direct:
-            return direct
-        metadata = payload.data.get("metadata")
+    if payload.payload and isinstance(payload.payload, dict):
+        metadata = payload.payload.get("metadata")
         if isinstance(metadata, dict):
             meta_job = metadata.get("job_id")
             if isinstance(meta_job, str) and meta_job:
                 return meta_job
+    if payload.data and isinstance(payload.data, dict):
+        direct = payload.data.get("job_id")
+        if isinstance(direct, str) and direct:
+            return direct
     return None
 
 
-def _extract_task_id(payload: KieWebhookPayload) -> str | None:
+def _extract_task_id(payload: FalWebhookPayload) -> str | None:
+    if payload.request_id:
+        return payload.request_id
     if payload.taskId:
         return payload.taskId
     if payload.data and isinstance(payload.data, dict):
@@ -46,30 +49,46 @@ def _extract_task_id(payload: KieWebhookPayload) -> str | None:
     return None
 
 
-def _map_status(raw_status: str | None, code: int | None) -> str | None:
-    if raw_status:
-        normalized = raw_status.strip().lower()
-        if normalized in {"success", "completed", "succeeded", "done"}:
-            return "completed"
-        if normalized in {"failed", "error", "cancelled"}:
-            return "failed"
-        if normalized in {"running", "processing", "queued", "in_progress"}:
-            return "running"
-    if code == 200:
-        return "completed"
-    if code and code >= 400:
-        return "failed"
+def _extract_error_text(payload: FalWebhookPayload) -> str | None:
+    if isinstance(payload.error, str) and payload.error.strip():
+        return payload.error.strip()
+    if isinstance(payload.error, dict):
+        message = payload.error.get("message")
+        if isinstance(message, str) and message.strip():
+            return message.strip()
+    if payload.payload and isinstance(payload.payload, dict):
+        error = payload.payload.get("error")
+        if isinstance(error, str) and error.strip():
+            return error.strip()
+        if isinstance(error, dict):
+            message = error.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
     return None
 
 
-@router.post("/kie", response_model=KieWebhookResponse)
-def kie_callback(
-    payload: KieWebhookPayload,
-    job_id: str | None = Query(default=None),
-    x_kie_webhook_secret: str | None = Header(default=None),
-) -> KieWebhookResponse:
-    expected_secret = settings.kie_webhook_secret
-    if expected_secret and x_kie_webhook_secret != expected_secret:
+def _map_status(raw_status: str | None, has_error: bool) -> str | None:
+    if has_error:
+        return "failed"
+    if raw_status:
+        normalized = raw_status.strip().upper()
+        if normalized in {"OK", "COMPLETED"}:
+            return "completed"
+        if normalized in {"ERROR", "FAILED"}:
+            return "failed"
+        if normalized in {"IN_QUEUE", "IN_PROGRESS"}:
+            return "running"
+    return None
+
+
+def _handle_fal_callback(
+    *,
+    payload: FalWebhookPayload,
+    job_id: str | None,
+    provided_secret: str | None,
+) -> FalWebhookResponse:
+    expected_secret = settings.fal_webhook_secret
+    if expected_secret and provided_secret != expected_secret:
         raise HTTPException(status_code=401, detail="invalid_webhook_secret")
 
     task_id = _extract_task_id(payload)
@@ -79,7 +98,7 @@ def kie_callback(
     if task_id:
         try:
             provider_task_record = provider_task_service.get_provider_task(
-                provider="kie",
+                provider="fal",
                 provider_task_id=task_id,
             )
         except PsycopgError as exc:
@@ -87,11 +106,13 @@ def kie_callback(
         if provider_task_record and not resolved_job_id:
             resolved_job_id = str(provider_task_record["job_id"])
 
-    mapped_status = _map_status(payload.status, payload.code)
+    has_error = bool(payload.error)
+    mapped_status = _map_status(payload.status, has_error=has_error)
     provider_task_status = payload.status or mapped_status
-    output_video_url, output_last_frame_url, output_metadata, error_message = extract_provider_artifacts(
-        payload.model_dump()
+    output_video_url, output_last_frame_url, output_metadata, artifact_error = extract_provider_artifacts(
+        payload.payload if isinstance(payload.payload, dict) else payload.model_dump()
     )
+    error_message = artifact_error or _extract_error_text(payload)
     completed_now = bool(mapped_status == "completed")
     failed_now = bool(mapped_status == "failed")
     retry_count: int | None = None
@@ -99,7 +120,7 @@ def kie_callback(
     dead_lettered: bool | None = None
 
     if provider_task_record and _is_stale_provider_task_status(provider_task_record.get("status")):
-        return KieWebhookResponse(
+        return FalWebhookResponse(
             accepted=True,
             job_id=resolved_job_id,
             mapped_status=mapped_status,
@@ -114,7 +135,7 @@ def kie_callback(
     if task_id and provider_task_status:
         try:
             provider_task_service.update_from_webhook(
-                provider="kie",
+                provider="fal",
                 provider_task_id=task_id,
                 status=provider_task_status,
                 latest_payload=payload.model_dump(),
@@ -128,7 +149,7 @@ def kie_callback(
             raise HTTPException(status_code=500, detail="db_provider_task_update_failed") from exc
 
     if not resolved_job_id or not mapped_status:
-        return KieWebhookResponse(
+        return FalWebhookResponse(
             accepted=True,
             job_id=resolved_job_id,
             mapped_status=mapped_status,
@@ -144,11 +165,11 @@ def kie_callback(
         effective_job_status = mapped_status
         if mapped_status == "failed" and task_id:
             retry_info = provider_task_service.schedule_retry_or_dead_letter(
-                provider="kie",
+                provider="fal",
                 provider_task_id=task_id,
                 error_message=error_message,
-                max_retries=settings.kie_max_retries,
-                base_delay_seconds=settings.kie_retry_base_delay_seconds,
+                max_retries=settings.fal_max_retries,
+                base_delay_seconds=settings.fal_retry_base_delay_seconds,
             )
             retry_count = int(retry_info["retry_count"])
             next_retry_at = retry_info["next_retry_at"]
@@ -170,7 +191,7 @@ def kie_callback(
     except PsycopgError as exc:
         raise HTTPException(status_code=500, detail="db_status_update_failed") from exc
 
-    return KieWebhookResponse(
+    return FalWebhookResponse(
         accepted=True,
         job_id=resolved_job_id,
         mapped_status=mapped_status,
@@ -180,4 +201,33 @@ def kie_callback(
         retry_count=retry_count,
         next_retry_at=next_retry_at,
         dead_lettered=dead_lettered,
+    )
+
+
+@router.post("/fal", response_model=FalWebhookResponse)
+def fal_callback(
+    payload: FalWebhookPayload,
+    job_id: str | None = Query(default=None),
+    secret: str | None = Query(default=None),
+    x_fal_webhook_secret: str | None = Header(default=None),
+) -> FalWebhookResponse:
+    return _handle_fal_callback(
+        payload=payload,
+        job_id=job_id,
+        provided_secret=x_fal_webhook_secret or secret,
+    )
+
+
+@router.post("/kie", response_model=FalWebhookResponse)
+def legacy_kie_callback_alias(
+    payload: FalWebhookPayload,
+    job_id: str | None = Query(default=None),
+    secret: str | None = Query(default=None),
+    x_fal_webhook_secret: str | None = Header(default=None),
+) -> FalWebhookResponse:
+    # Temporary alias to avoid breaking existing callback URLs during provider transition.
+    return _handle_fal_callback(
+        payload=payload,
+        job_id=job_id,
+        provided_secret=x_fal_webhook_secret or secret,
     )

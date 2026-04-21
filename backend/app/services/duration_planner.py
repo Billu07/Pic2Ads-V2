@@ -14,6 +14,7 @@ class DurationPlannerService:
         job = job_service.get_job(job_id)
         if job is None:
             raise RuntimeError("job_not_found")
+        language_code = job_service.get_language_code(job_id)
 
         scripts_run = script_service.get_cached_for_job(job_id)
         if scripts_run is None:
@@ -26,17 +27,20 @@ class DurationPlannerService:
                 job_id=job_id,
                 duration_s=int(job.duration_s),
                 scripts=scripts_run.output.scripts,
+                language_code=language_code,
             )
         if job.mode == "pro_arc":
             return self._build_pro_arc_unit(
                 job_id=job_id,
                 duration_s=int(job.duration_s),
                 scripts=scripts_run.output.scripts,
+                language_code=language_code,
             )
         return self._build_tv_unit(
             job_id=job_id,
             duration_s=int(job.duration_s),
             scripts=scripts_run.output.scripts,
+            language_code=language_code,
         )
 
     @staticmethod
@@ -49,7 +53,14 @@ class DurationPlannerService:
             remaining -= seg_dur
         return segments
 
-    def _build_ugc_units(self, *, job_id: str, duration_s: int, scripts: list[ScriptVariant]) -> int:
+    def _build_ugc_units(
+        self,
+        *,
+        job_id: str,
+        duration_s: int,
+        scripts: list[ScriptVariant],
+        language_code: str,
+    ) -> int:
         total_units = 0
         duration_parts = self._split_segments(duration_s)
         for sequence, script in enumerate(scripts):
@@ -60,6 +71,7 @@ class DurationPlannerService:
                     duration_s=seg_dur,
                     prompt_seed=self._ugc_prompt_seed(
                         script=script,
+                        language_code=language_code,
                         segment_index=idx,
                         total_segments=len(duration_parts),
                         segment_duration_s=seg_dur,
@@ -82,7 +94,12 @@ class DurationPlannerService:
         return total_units
 
     def _build_pro_arc_unit(
-        self, *, job_id: str, duration_s: int, scripts: list[ScriptVariant]
+        self,
+        *,
+        job_id: str,
+        duration_s: int,
+        scripts: list[ScriptVariant],
+        language_code: str,
     ) -> int:
         primary_script = scripts[0] if scripts else None
         pattern_hint = primary_script.render_pattern_hint if primary_script else "single_take"
@@ -104,6 +121,7 @@ class DurationPlannerService:
                 prompt_seed=self._non_ugc_prompt_seed(
                     mode="pro_arc",
                     script=primary_script,
+                    language_code=language_code,
                     segment_index=idx,
                     total_segments=len(duration_parts),
                     segment_duration_s=seg_dur,
@@ -126,7 +144,14 @@ class DurationPlannerService:
             raise RuntimeError("job_not_found")
         return 1
 
-    def _build_tv_unit(self, *, job_id: str, duration_s: int, scripts: list[ScriptVariant]) -> int:
+    def _build_tv_unit(
+        self,
+        *,
+        job_id: str,
+        duration_s: int,
+        scripts: list[ScriptVariant],
+        language_code: str,
+    ) -> int:
         primary_script = scripts[0] if scripts else None
         storyboard = job_service.get_tv_storyboard(job_id)
 
@@ -169,6 +194,7 @@ class DurationPlannerService:
             prompt = self._non_ugc_prompt_seed(
                 mode="tv",
                 script=primary_script,
+                language_code=language_code,
                 segment_index=idx,
                 total_segments=len(duration_parts),
                 segment_duration_s=seg_dur,
@@ -256,6 +282,7 @@ class DurationPlannerService:
         self,
         *,
         script: ScriptVariant,
+        language_code: str,
         segment_index: int,
         total_segments: int,
         segment_duration_s: int,
@@ -272,6 +299,7 @@ class DurationPlannerService:
             f"Hook: {script.hook}. Feature focus: {script.product_feature_focus}. "
             f"First frame: {script.first_frame_description}. Dialogue: {dialogue}. "
             f"Visual beats: {visuals}. Authenticity markers: {authenticity}. "
+            f"Dialogue language requirement: {language_code}. "
             "Constraints: selfie-style realism; natural handheld motion; "
             "product appearance unchanged from source image; no visible phone, no subtitles, "
             "no overlays, no watermarks, no logo overlays."
@@ -283,6 +311,7 @@ class DurationPlannerService:
         *,
         mode: str,
         script: ScriptVariant | None,
+        language_code: str,
         segment_index: int,
         total_segments: int,
         segment_duration_s: int,
@@ -291,6 +320,7 @@ class DurationPlannerService:
         if script is None:
             return (
                 f"{mode} segment {segment_index + 1}/{total_segments}; duration_s={segment_duration_s}; "
+                f"dialogue language requirement={language_code}; "
                 "product fidelity locked; realistic camera behavior; no overlays."
             )[:1900]
 
@@ -304,6 +334,7 @@ class DurationPlannerService:
             f"Hook: {script.hook}. Feature focus: {script.product_feature_focus}. "
             f"First frame: {script.first_frame_description}. Dialogue: {dialogue}. "
             f"Visual beats: {visuals}. Authenticity markers: {authenticity}. "
+            f"Dialogue language requirement: {language_code}. "
             "Constraints: product appearance unchanged from source image; no visible phone; no subtitles; "
             "no overlays; no watermarks."
         )

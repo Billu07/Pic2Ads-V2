@@ -51,6 +51,8 @@ class ScriptVariant(BaseModel):
 
 class ScreenwriterInput(BaseModel):
     mode: Literal["ugc", "pro_arc", "tv"]
+    language_code: Literal["en", "bn", "hi", "es"] = "en"
+    language_name: str = Field(default="English", min_length=2, max_length=40)
     duration_s: int = Field(ge=6, le=60)
     product_name: str = Field(min_length=1, max_length=200)
     product_image_url: str = Field(min_length=1, max_length=2000)

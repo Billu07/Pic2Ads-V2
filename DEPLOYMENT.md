@@ -60,13 +60,15 @@ Backend environment variables:
 - `DATABASE_URL=<supabase-session-pooler-url>?sslmode=require`
 - `OPENAI_API_KEY=<...>`
 - `OPENAI_SCRIPT_MODEL=gpt-4.1-mini`
-- `KIE_API_KEY=<...>`
-- `KIE_CALLBACK_URL=https://api.pic2ads.io/v1/webhooks/kie`
-- `KIE_WEBHOOK_SECRET=<optional>`
-- `KIE_DEFAULT_MODEL=bytedance/seedance-2`
-- `KIE_RETRY_WORKER_ENABLED=true`
-- `KIE_RETRY_WORKER_INTERVAL_SECONDS=20`
-- `KIE_RETRY_WORKER_BATCH_SIZE=10`
+- `FAL_API_KEY=<...>`
+- `FAL_CALLBACK_URL=https://api.pic2ads.io/v1/webhooks/fal`
+- `FAL_WEBHOOK_SECRET=<optional>`
+- `FAL_SEEDANCE_TEXT_ENDPOINT=bytedance/seedance-2.0/text-to-video`
+- `FAL_SEEDANCE_IMAGE_ENDPOINT=bytedance/seedance-2.0/image-to-video`
+- `FAL_SEEDANCE_REFERENCE_ENDPOINT=bytedance/seedance-2.0/reference-to-video`
+- `FAL_RETRY_WORKER_ENABLED=true`
+- `FAL_RETRY_WORKER_INTERVAL_SECONDS=20`
+- `FAL_RETRY_WORKER_BATCH_SIZE=10`
 
 ## 4. Connect Domains
 
@@ -91,9 +93,9 @@ At your DNS provider:
 2. Backend:
    - `https://api.pic2ads.io/v1/health` should return healthy response.
 
-3. Kie callback:
+3. Fal callback:
    - Confirm webhook requests reach:
-     - `https://api.pic2ads.io/v1/webhooks/kie`
+     - `https://api.pic2ads.io/v1/webhooks/fal`
 
 4. Manifest:
    - Confirm `/jobs/<jobId>` page shows timeline and segment states.

@@ -56,6 +56,8 @@ class ConceptService:
             return None
 
         payload = TvConceptGenerateInput(
+            language_code=str(prompt_context.get("language_code") or "en"),
+            language_name=str(prompt_context.get("language_name") or "English"),
             product_name=product_name,
             brief=self._read_job_brief(job_id),
             duration_s=job.duration_s,

@@ -3,15 +3,20 @@ from typing import Any
 from pydantic import BaseModel
 
 
-class KieWebhookPayload(BaseModel):
-    taskId: str | None = None
+class FalWebhookPayload(BaseModel):
+    request_id: str | None = None
+    gateway_request_id: str | None = None
     status: str | None = None
-    code: int | None = None
+    payload: dict[str, Any] | None = None
+    error: str | dict[str, Any] | None = None
+
+    # Backward-compatible aliases for older payload shapes.
+    taskId: str | None = None
     job_id: str | None = None
     data: dict[str, Any] | None = None
 
 
-class KieWebhookResponse(BaseModel):
+class FalWebhookResponse(BaseModel):
     accepted: bool
     job_id: str | None = None
     mapped_status: str | None = None

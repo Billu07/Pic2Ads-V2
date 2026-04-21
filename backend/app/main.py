@@ -11,11 +11,11 @@ from app.services.seedance_retry_worker import seedance_retry_worker_service
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     retry_task: asyncio.Task[None] | None = None
-    if settings.kie_retry_worker_enabled:
+    if settings.fal_retry_worker_enabled:
         retry_task = asyncio.create_task(
             seedance_retry_worker_service.run_forever(
-                poll_interval_seconds=settings.kie_retry_worker_interval_seconds,
-                batch_size=settings.kie_retry_worker_batch_size,
+                poll_interval_seconds=settings.fal_retry_worker_interval_seconds,
+                batch_size=settings.fal_retry_worker_batch_size,
             )
         )
     try:

@@ -15,6 +15,7 @@ class DeliverableRequest(BaseModel):
 
 class CreateJobRequest(BaseModel):
     mode: str = Field(pattern=r"^(ugc|pro_arc|tv)$")
+    language: str = Field(default="en", pattern=r"^(en|bn|hi|es)$")
     duration_s: int = Field(ge=10, le=60)
     product: ProductInput
     deliverables: list[DeliverableRequest] = Field(default_factory=list)

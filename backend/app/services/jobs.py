@@ -20,6 +20,12 @@ class JobRecord:
 
 class JobService:
     """Postgres-backed job store."""
+    _LANGUAGE_MAP: dict[str, str] = {
+        "en": "English",
+        "bn": "Bengali",
+        "hi": "Hindi",
+        "es": "Spanish",
+    }
 
     @staticmethod
     def _default_creative_decisions(mode: str) -> CreativeDecisions:
@@ -70,9 +76,14 @@ class JobService:
 
     @classmethod
     def _default_workflow_state(
-        cls, mode: str, creative_updates: CreativeDecisionsInput | None = None
+        cls,
+        mode: str,
+        creative_updates: CreativeDecisionsInput | None = None,
+        language: str = "en",
     ) -> dict[str, Any]:
+        language_code = language if language in cls._LANGUAGE_MAP else "en"
         state: dict[str, Any] = {
+            "language": language_code,
             "creative": {
                 "mode": mode,
                 "prompt_pack_id": cls._prompt_pack_id_for_mode(mode),
@@ -100,7 +111,11 @@ class JobService:
     def create_job(self, req: CreateJobRequest) -> JobRecord:
         job_id = f"job_{uuid4().hex[:12]}"
         deliverables = [item.model_dump() for item in req.deliverables]
-        workflow_state = self._default_workflow_state(req.mode, req.creative_decisions)
+        workflow_state = self._default_workflow_state(
+            req.mode,
+            req.creative_decisions,
+            language=req.language,
+        )
 
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -261,11 +276,16 @@ class JobService:
         prompt_pack_id = self._prompt_pack_id_for_mode(mode)
         if isinstance(creative, dict) and isinstance(creative.get("prompt_pack_id"), str):
             prompt_pack_id = str(creative["prompt_pack_id"])
+        language_code = "en"
+        if isinstance(state.get("language"), str) and state["language"] in self._LANGUAGE_MAP:
+            language_code = str(state["language"])
 
         return {
             "job_id": job_id,
             "mode": mode,
             "prompt_pack_id": prompt_pack_id,
+            "language_code": language_code,
+            "language_name": self._LANGUAGE_MAP.get(language_code, "English"),
             "decisions": decisions.model_dump(),
         }
 
@@ -532,6 +552,26 @@ class JobService:
                 updated = cur.rowcount > 0
             conn.commit()
         return updated
+
+    def get_language_code(self, job_id: str) -> str:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select workflow_state
+                    from public.ad_job
+                    where id = %s
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return "en"
+        workflow_state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
+        language = workflow_state.get("language")
+        if isinstance(language, str) and language in self._LANGUAGE_MAP:
+            return language
+        return "en"
 
     def mark_running(self, job_id: str) -> bool:
         return self.set_status(job_id, "running")

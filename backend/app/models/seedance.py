@@ -1,14 +1,16 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
 class SeedanceSubmitRequest(BaseModel):
     prompt: str = Field(min_length=3, max_length=20_000)
-    duration: int = Field(ge=4, le=15, default=15)
-    aspect_ratio: str = Field(default="9:16", pattern=r"^(1:1|4:3|3:4|16:9|9:16|21:9|adaptive)$")
-    resolution: str = Field(default="720p", pattern=r"^(480p|720p|1080p)$")
+    duration: int | Literal["auto"] = "auto"
+    aspect_ratio: str = Field(default="9:16", pattern=r"^(auto|1:1|4:3|3:4|16:9|9:16|21:9)$")
+    resolution: str = Field(default="720p", pattern=r"^(480p|720p)$")
     generate_audio: bool = False
-    web_search: bool = False
-    nsfw_checker: bool = False
+    seed: int | None = None
+    end_user_id: str | None = None
 
     first_frame_url: str | None = None
     last_frame_url: str | None = None
@@ -20,6 +22,8 @@ class SeedanceSubmitRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_exclusivity(self) -> "SeedanceSubmitRequest":
+        if isinstance(self.duration, int) and not (4 <= self.duration <= 15):
+            raise ValueError("duration must be between 4 and 15 seconds, or 'auto'.")
         has_first_last = bool(self.first_frame_url or self.last_frame_url)
         has_multimodal = bool(
             self.reference_image_urls or self.reference_video_urls or self.reference_audio_urls
@@ -28,6 +32,8 @@ class SeedanceSubmitRequest(BaseModel):
             raise ValueError(
                 "first_frame_url/last_frame_url cannot be combined with reference_* inputs."
             )
+        if self.reference_audio_urls and not (self.reference_image_urls or self.reference_video_urls):
+            raise ValueError("reference_audio_urls requires at least one reference image or video.")
         return self
 
 
@@ -54,7 +60,7 @@ class SeedanceTaskSyncResponse(BaseModel):
 
 
 class SeedanceRetryRunResponse(BaseModel):
-    provider: str = "kie"
+    provider: str = "fal"
     claimed: int = 0
     resubmitted: int = 0
     rescheduled: int = 0

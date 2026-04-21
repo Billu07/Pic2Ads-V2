@@ -27,6 +27,7 @@ export type ExportManifest = {
 };
 
 export type CreateJobMode = "ugc" | "pro_arc" | "tv";
+export type JobLanguage = "en" | "bn" | "hi" | "es";
 export type DeliverableAspect = "9:16" | "1:1" | "16:9";
 export type CreativeHookStyle =
   | "problem_first"
@@ -57,6 +58,7 @@ export type CreativeDecisionsPayload = {
 
 export type CreateJobPayload = {
   mode: CreateJobMode;
+  language: JobLanguage;
   duration_s: number;
   product: {
     product_name: string;

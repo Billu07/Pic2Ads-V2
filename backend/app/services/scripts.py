@@ -77,6 +77,8 @@ class ScriptService:
 
         payload = ScreenwriterInput(
             mode=str(job_row["mode"]),
+            language_code=str(prompt_context.get("language_code") or "en"),
+            language_name=str(prompt_context.get("language_name") or "English"),
             duration_s=int(job_row["duration_s"]),
             product_name=str(job_row["product_name"]),
             product_image_url=str(job_row["product_image_url"]),

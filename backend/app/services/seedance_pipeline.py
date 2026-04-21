@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from app.clients.kie_client import kie_client
+from app.clients.fal_client import fal_client
 from app.core.config import settings
 from app.services.jobs import job_service
 from app.services.provider_tasks import provider_task_service
@@ -17,6 +17,16 @@ def _canonical_hash(payload: dict[str, Any]) -> str:
 
 
 class SeedancePipelineService:
+    @staticmethod
+    def _extract_request_id(submit_response: dict[str, Any]) -> str | None:
+        direct = submit_response.get("request_id")
+        if isinstance(direct, str) and direct:
+            return direct
+        camel = submit_response.get("requestId")
+        if isinstance(camel, str) and camel:
+            return camel
+        return None
+
     async def submit_for_segment(
         self,
         *,
@@ -34,28 +44,26 @@ class SeedancePipelineService:
         product_name, product_image_url = product_context
 
         prompt = segment.prompt_seed or f"Handheld product ad shot for {product_name}"
-        input_payload: dict[str, Any] = {
+        arguments: dict[str, Any] = {
             "prompt": prompt,
             "duration": segment.duration_s,
             "aspect_ratio": "9:16",
             "resolution": "720p",
             "generate_audio": False,
-            "web_search": False,
-            "nsfw_checker": False,
-            "first_frame_url": product_image_url,
+            "image_url": product_image_url,
         }
 
-        body: dict[str, Any] = {
-            "model": settings.kie_default_model,
-            "input": input_payload,
+        endpoint_id = settings.fal_seedance_image_endpoint
+        submit_payload: dict[str, Any] = {
+            "endpoint_id": endpoint_id,
+            "arguments": arguments,
+            "webhook_url": settings.fal_callback_url,
         }
-        if settings.kie_callback_url:
-            body["callBackUrl"] = settings.kie_callback_url
 
-        submit_hash = _canonical_hash(body)
+        submit_hash = _canonical_hash(submit_payload)
         existing = provider_task_service.find_existing_task(
             job_id=job_id,
-            provider="kie",
+            provider="fal",
             idempotency_key=idempotency_key,
             submit_hash=submit_hash,
         )
@@ -70,7 +78,11 @@ class SeedancePipelineService:
             }
 
         try:
-            kie_response = await kie_client.create_task(body)
+            submit_response = await fal_client.submit(
+                endpoint_id=endpoint_id,
+                arguments=arguments,
+                webhook_url=settings.fal_callback_url,
+            )
         except RuntimeError:
             # Credentials missing: keep segment queued/running flow non-fatal in development.
             render_unit_service.set_segment_status(segment_id=segment_id, status="queued")
@@ -83,34 +95,21 @@ class SeedancePipelineService:
             }
         except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
             render_unit_service.set_segment_status(segment_id=segment_id, status="failed")
-            raise RuntimeError("kie_submit_failed") from exc
+            raise RuntimeError("fal_submit_failed") from exc
 
-        api_code = kie_response.get("code")
-        api_msg = kie_response.get("msg")
-        if isinstance(api_code, int) and api_code != 200:
-            render_unit_service.set_segment_status(segment_id=segment_id, status="failed")
-            detail = f"kie_api_error_code_{api_code}"
-            if isinstance(api_msg, str) and api_msg.strip():
-                detail = f"{detail}:{api_msg.strip()}"
-            raise RuntimeError(detail)
-
-        data = kie_response.get("data")
-        task_id = data.get("taskId") if isinstance(data, dict) else None
+        task_id = self._extract_request_id(submit_response)
         if not isinstance(task_id, str) or not task_id:
             render_unit_service.set_segment_status(segment_id=segment_id, status="failed")
-            detail = "kie_task_id_missing"
-            if isinstance(api_msg, str) and api_msg.strip():
-                detail = f"{detail}:{api_msg.strip()}"
-            raise RuntimeError(detail)
+            raise RuntimeError("fal_request_id_missing")
 
         provider_task_service.create_or_update(
             job_id=job_id,
-            provider="kie",
+            provider="fal",
             provider_task_id=task_id,
-            model=settings.kie_default_model,
+            model=endpoint_id,
             status="submitted",
-            submit_payload=body,
-            latest_payload=kie_response,
+            submit_payload=submit_payload,
+            latest_payload=submit_response,
             segment_id=segment_id,
             idempotency_key=idempotency_key,
             submit_hash=submit_hash,

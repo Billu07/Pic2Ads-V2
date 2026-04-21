@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 from psycopg import Error as PsycopgError
 
-from app.clients.kie_client import kie_client
+from app.clients.fal_client import fal_client
 from app.core.config import settings
 from app.services.jobs import job_service
 from app.services.provider_tasks import provider_task_service
@@ -14,20 +14,21 @@ from app.services.render_units import render_unit_service
 logger = logging.getLogger(__name__)
 
 
-def _extract_task_id(kie_response: dict[str, Any]) -> str | None:
-    data = kie_response.get("data")
-    if isinstance(data, dict):
-        task_id = data.get("taskId")
-        if isinstance(task_id, str) and task_id:
-            return task_id
+def _extract_request_id(submit_response: dict[str, Any]) -> str | None:
+    direct = submit_response.get("request_id")
+    if isinstance(direct, str) and direct:
+        return direct
+    camel = submit_response.get("requestId")
+    if isinstance(camel, str) and camel:
+        return camel
     return None
 
 
 class SeedanceRetryWorkerService:
     async def run_once(self, *, batch_size: int | None = None) -> dict[str, int]:
         claimed = provider_task_service.claim_due_retries(
-            provider="kie",
-            limit=max(1, batch_size or settings.kie_retry_worker_batch_size),
+            provider="fal",
+            limit=max(1, batch_size or settings.fal_retry_worker_batch_size),
         )
 
         stats = {
@@ -74,8 +75,23 @@ class SeedanceRetryWorkerService:
                 error_message="invalid_retry_submit_payload",
             )
 
+        endpoint_id = str(model) if isinstance(model, str) and model else None
+        arguments = submit_payload.get("arguments")
+        webhook_url = submit_payload.get("webhook_url")
+        if not endpoint_id or not isinstance(arguments, dict):
+            return self._schedule_retry(
+                old_task_id=old_task_id,
+                job_id=job_id,
+                segment_id=segment_id,
+                error_message="invalid_retry_endpoint_or_arguments",
+            )
+
         try:
-            kie_response = await kie_client.create_task(submit_payload)
+            submit_response = await fal_client.submit(
+                endpoint_id=endpoint_id,
+                arguments=arguments,
+                webhook_url=webhook_url if isinstance(webhook_url, str) and webhook_url else settings.fal_callback_url,
+            )
         except RuntimeError as exc:
             return self._schedule_retry(
                 old_task_id=old_task_id,
@@ -88,41 +104,41 @@ class SeedanceRetryWorkerService:
                 old_task_id=old_task_id,
                 job_id=job_id,
                 segment_id=segment_id,
-                error_message=f"kie_http_error_{exc.response.status_code}",
+                error_message=f"fal_http_error_{exc.response.status_code}",
             )
         except httpx.HTTPError:
             return self._schedule_retry(
                 old_task_id=old_task_id,
                 job_id=job_id,
                 segment_id=segment_id,
-                error_message="kie_network_error",
+                error_message="fal_network_error",
             )
 
-        new_task_id = _extract_task_id(kie_response)
+        new_task_id = _extract_request_id(submit_response)
         if not new_task_id:
             return self._schedule_retry(
                 old_task_id=old_task_id,
                 job_id=job_id,
                 segment_id=segment_id,
-                error_message="kie_task_id_missing",
+                error_message="fal_request_id_missing",
             )
 
         try:
             provider_task_service.create_or_update(
                 job_id=job_id,
-                provider="kie",
+                provider="fal",
                 provider_task_id=new_task_id,
-                model=str(model) if model else settings.kie_default_model,
+                model=endpoint_id,
                 status="submitted",
                 submit_payload=submit_payload,
-                latest_payload=kie_response,
+                latest_payload=submit_response,
                 segment_id=int(segment_id) if segment_id is not None else None,
                 idempotency_key=None,
                 submit_hash=None,
                 retry_count=retry_count,
             )
             provider_task_service.mark_retried(
-                provider="kie",
+                provider="fal",
                 provider_task_id=old_task_id,
                 replacement_task_id=new_task_id,
             )
@@ -148,11 +164,11 @@ class SeedanceRetryWorkerService:
         error_message: str,
     ) -> str:
         retry_info = provider_task_service.schedule_retry_or_dead_letter(
-            provider="kie",
+            provider="fal",
             provider_task_id=old_task_id,
             error_message=error_message,
-            max_retries=settings.kie_max_retries,
-            base_delay_seconds=settings.kie_retry_base_delay_seconds,
+            max_retries=settings.fal_max_retries,
+            base_delay_seconds=settings.fal_retry_base_delay_seconds,
         )
         if bool(retry_info["dead_lettered"]):
             job_service.set_status(job_id, "failed")

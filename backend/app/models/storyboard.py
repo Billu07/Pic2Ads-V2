@@ -17,6 +17,8 @@ class TvStoryboardShot(BaseModel):
 
 
 class TvStoryboardGenerateInput(BaseModel):
+    language_code: str = Field(default="en", pattern=r"^(en|bn|hi|es)$")
+    language_name: str = Field(default="English", min_length=2, max_length=40)
     product_name: str = Field(min_length=1, max_length=200)
     brief: str | None = Field(default=None, max_length=3000)
     duration_s: int = Field(ge=15, le=60)

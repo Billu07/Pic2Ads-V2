@@ -69,6 +69,8 @@ class PromptOrchestrationService:
             "job_id": job_id,
             "mode": mode,
             "prompt_pack_id": str(context["prompt_pack_id"] or pack.pack_id),
+            "language_code": str(context.get("language_code") or "en"),
+            "language_name": str(context.get("language_name") or "English"),
             "creative_decisions": decisions,
             "script_directives": self._format_stage_directives(pack.script_directives),
             "concept_directives": self._format_stage_directives(pack.concept_directives),
