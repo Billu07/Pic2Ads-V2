@@ -18,6 +18,7 @@ from app.services.jobs import job_service
 from app.services.provider_payloads import extract_provider_artifacts
 from app.services.provider_tasks import provider_task_service
 from app.services.render_units import render_unit_service
+from app.services.seedance_pipeline import seedance_pipeline_service
 from app.services.seedance_retry_worker import seedance_retry_worker_service
 
 router = APIRouter(prefix="/jobs")
@@ -337,6 +338,16 @@ async def sync_seedance_task(job_id: str, task_id: str) -> SeedanceTaskSyncRespo
             )
     except PsycopgError as exc:
         raise HTTPException(status_code=500, detail="db_write_failed") from exc
+
+    if mapped.get("segment_id") is not None and mapped_job_status == "completed":
+        try:
+            await seedance_pipeline_service.auto_continue_extend_chain(
+                job_id=job_id,
+                completed_segment_id=int(mapped["segment_id"]),
+            )
+        except RuntimeError:
+            # Do not fail sync responses on auto-chain continuation.
+            pass
 
     return SeedanceTaskSyncResponse(
         job_id=job_id,

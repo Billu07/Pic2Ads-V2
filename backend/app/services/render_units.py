@@ -10,6 +10,89 @@ from app.models.render import (
 
 
 class RenderUnitService:
+    def get_segment_submission_context(self, *, job_id: str, segment_id: int) -> dict | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select
+                      s.id,
+                      s.render_unit_id,
+                      s."order",
+                      s.duration_s,
+                      s.prompt_seed,
+                      s.status,
+                      s.output_video_url,
+                      s.output_last_frame_url,
+                      ru.pattern,
+                      prev.id as previous_segment_id,
+                      prev.status as previous_segment_status,
+                      prev.output_video_url as previous_output_video_url
+                    from public.segment s
+                    join public.render_unit ru on ru.id = s.render_unit_id
+                    left join public.segment prev
+                      on prev.render_unit_id = s.render_unit_id
+                     and prev."order" = s."order" - 1
+                    where ru.job_id = %s
+                      and s.id = %s
+                    """,
+                    (job_id, segment_id),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        return {
+            "segment_id": int(row["id"]),
+            "render_unit_id": int(row["render_unit_id"]),
+            "order": int(row["order"]),
+            "duration_s": int(row["duration_s"]),
+            "prompt_seed": str(row["prompt_seed"]) if row["prompt_seed"] else None,
+            "status": str(row["status"]),
+            "output_video_url": row["output_video_url"],
+            "output_last_frame_url": row["output_last_frame_url"],
+            "pattern": str(row["pattern"]),
+            "previous_segment_id": (
+                int(row["previous_segment_id"]) if row["previous_segment_id"] is not None else None
+            ),
+            "previous_segment_status": (
+                str(row["previous_segment_status"]) if row["previous_segment_status"] else None
+            ),
+            "previous_output_video_url": row["previous_output_video_url"],
+        }
+
+    def get_segment_by_unit_order(
+        self,
+        *,
+        job_id: str,
+        render_unit_id: int,
+        order: int,
+    ) -> SegmentResponse | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select s.id, s."order", s.duration_s, s.prompt_seed, s.status, s.output_video_url, s.output_last_frame_url
+                    from public.segment s
+                    join public.render_unit ru on ru.id = s.render_unit_id
+                    where ru.job_id = %s
+                      and s.render_unit_id = %s
+                      and s."order" = %s
+                    """,
+                    (job_id, render_unit_id, order),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        return SegmentResponse(
+            id=int(row["id"]),
+            order=int(row["order"]),
+            duration_s=int(row["duration_s"]),
+            prompt_seed=str(row["prompt_seed"]) if row["prompt_seed"] else None,
+            status=str(row["status"]),
+            output_video_url=row["output_video_url"],
+            output_last_frame_url=row["output_last_frame_url"],
+        )
+
     def create_unit(self, job_id: str, req: RenderUnitCreateRequest) -> RenderUnitResponse | None:
         with get_db_connection() as conn:
             with conn.cursor() as cur:

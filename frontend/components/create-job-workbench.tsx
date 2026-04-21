@@ -48,7 +48,6 @@ type FormState = {
   must_include_csv: string;
   must_avoid_csv: string;
   generate_audio: boolean;
-  render_all_variants: boolean;
 };
 
 const MODE_PRESETS: Record<CreateJobMode, { label: string; duration: number; note: string }> = {
@@ -170,7 +169,6 @@ export function CreateJobWorkbench() {
     must_include_csv: "",
     must_avoid_csv: "",
     generate_audio: true,
-    render_all_variants: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -183,6 +181,9 @@ export function CreateJobWorkbench() {
   const [tvStoryboardShots, setTvStoryboardShots] = useState<TvStoryboardShot[]>([]);
   const [scriptVariants, setScriptVariants] = useState<ScriptVariant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  const [modalVariantId, setModalVariantId] = useState<string>("");
+  const [shouldAutoRunAfterVariantSelect, setShouldAutoRunAfterVariantSelect] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -250,6 +251,58 @@ export function CreateJobWorkbench() {
       return firstId;
     }
     return null;
+  }
+
+  function openVariantSelectionModal(autoRunAfterSelect: boolean, preferredVariantId?: string) {
+    const fallback = (preferredVariantId || selectedVariantId || scriptVariants[0]?.variant_id || "").trim();
+    if (!fallback) {
+      setError("No script variants available yet. Generate scripts first.");
+      return;
+    }
+    setModalVariantId(fallback);
+    setShouldAutoRunAfterVariantSelect(autoRunAfterSelect);
+    setIsVariantModalOpen(true);
+  }
+
+  async function executePipeline(job: JobCreatedResponse, variantIdOverride?: string) {
+    const selectedForRun =
+      job.mode === "ugc" ? (variantIdOverride || selectedVariantId || "").trim() : undefined;
+    if (job.mode === "ugc" && !selectedForRun) {
+      setError("Select one script variant before rendering.");
+      return;
+    }
+
+    setError(null);
+    setIsRunning(true);
+    try {
+      const runResult = await runLocalPipeline(job.id, {
+        generate_audio: form.generate_audio,
+        render_all_variants: job.mode === "ugc" ? false : true,
+        selected_variant_id: job.mode === "ugc" ? selectedForRun : undefined,
+      });
+      setPipelineResult(runResult);
+    } catch (runError) {
+      setError(summarizeError(runError));
+    } finally {
+      setIsRunning(false);
+    }
+  }
+
+  async function confirmVariantSelection() {
+    const chosenVariantId = (modalVariantId || scriptVariants[0]?.variant_id || "").trim();
+    if (!chosenVariantId) {
+      setError("Select a script variant to continue.");
+      return;
+    }
+
+    setSelectedVariantId(chosenVariantId);
+    setIsVariantModalOpen(false);
+
+    const shouldRun = shouldAutoRunAfterVariantSelect;
+    setShouldAutoRunAfterVariantSelect(false);
+    if (shouldRun && createdJob) {
+      await executePipeline(createdJob, chosenVariantId);
+    }
   }
 
   async function handleGenerateTvConcepts() {
@@ -374,6 +427,9 @@ export function CreateJobWorkbench() {
     setTvStoryboardShots([]);
     setScriptVariants([]);
     setSelectedVariantId("");
+    setModalVariantId("");
+    setIsVariantModalOpen(false);
+    setShouldAutoRunAfterVariantSelect(false);
 
     let resolvedImageUrl = form.product_image_url.trim();
     if (!resolvedImageUrl && selectedFile) {
@@ -428,21 +484,18 @@ export function CreateJobWorkbench() {
         await refreshTvWorkflow(created.id);
       }
 
-      if (form.auto_run_local) {
-        setIsRunning(true);
-        try {
-          const runResult = await runLocalPipeline(created.id, {
-            generate_audio: form.generate_audio,
-            render_all_variants: form.mode === "ugc" ? form.render_all_variants : true,
-            selected_variant_id:
-              form.mode === "ugc" && !form.render_all_variants
-                ? selectedVariantId || firstVariantId || undefined
-                : undefined,
-          });
-          setPipelineResult(runResult);
-        } finally {
-          setIsRunning(false);
+      if (created.mode === "ugc") {
+        if (!firstVariantId) {
+          setError("Script generation returned no variants for UGC mode.");
+          return;
         }
+        setSelectedVariantId(firstVariantId);
+        openVariantSelectionModal(form.auto_run_local, firstVariantId);
+        return;
+      }
+
+      if (form.auto_run_local) {
+        await executePipeline(created);
       }
     } catch (submitError) {
       setError(summarizeError(submitError));
@@ -455,21 +508,26 @@ export function CreateJobWorkbench() {
     if (!createdJob) {
       return;
     }
-    setError(null);
-    setIsRunning(true);
-    try {
-      const runResult = await runLocalPipeline(createdJob.id, {
-        generate_audio: form.generate_audio,
-        render_all_variants: createdJob.mode === "ugc" ? form.render_all_variants : true,
-        selected_variant_id:
-          createdJob.mode === "ugc" && !form.render_all_variants ? selectedVariantId || undefined : undefined,
-      });
-      setPipelineResult(runResult);
-    } catch (runError) {
-      setError(summarizeError(runError));
-    } finally {
-      setIsRunning(false);
+
+    if (createdJob.mode === "ugc") {
+      if (scriptVariants.length === 0) {
+        try {
+          const firstVariantId = await handleRunScripts(createdJob.id);
+          if (!firstVariantId) {
+            setError("Script generation returned no variants for UGC mode.");
+            return;
+          }
+          openVariantSelectionModal(true, firstVariantId);
+        } catch (scriptError) {
+          setError(summarizeError(scriptError));
+        }
+        return;
+      }
+      openVariantSelectionModal(true);
+      return;
     }
+
+    await executePipeline(createdJob);
   }
 
   return (
@@ -776,7 +834,7 @@ export function CreateJobWorkbench() {
                 setForm((prev) => ({ ...prev, auto_run_local: event.target.checked }))
               }
             />
-            Auto-run local pipeline after creation
+            Auto-run pipeline after script selection
           </label>
           <label className="inline-toggle">
             <input
@@ -788,18 +846,6 @@ export function CreateJobWorkbench() {
             />
             Generate audio (default on)
           </label>
-          {form.mode === "ugc" && (
-            <label className="inline-toggle">
-              <input
-                type="checkbox"
-                checked={form.render_all_variants}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, render_all_variants: event.target.checked }))
-                }
-              />
-              Render all UGC variants (3x credits)
-            </label>
-          )}
 
           <div className="cta-row form-actions">
             <button
@@ -889,6 +935,16 @@ export function CreateJobWorkbench() {
               >
                 Refresh Scripts
               </button>
+              {createdJob.mode === "ugc" && scriptVariants.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => openVariantSelectionModal(false)}
+                  disabled={isSubmitting || isRunning}
+                >
+                  Open Script Selector
+                </button>
+              )}
             </div>
 
             {scriptVariants.length > 0 && (
@@ -901,7 +957,10 @@ export function CreateJobWorkbench() {
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => setSelectedVariantId(variant.variant_id)}
+                        onClick={() => {
+                          setSelectedVariantId(variant.variant_id);
+                          setModalVariantId(variant.variant_id);
+                        }}
                         disabled={createdJob.mode !== "ugc"}
                       >
                         {selectedVariantId === variant.variant_id ? "Selected" : "Select Script"}
@@ -911,9 +970,9 @@ export function CreateJobWorkbench() {
                 </div>
               </div>
             )}
-            {createdJob.mode === "ugc" && !form.render_all_variants && (
+            {createdJob.mode === "ugc" && (
               <p className="hint">
-                UGC render will submit one variant: `{selectedVariantId || scriptVariants[0]?.variant_id || "first"}`.
+                UGC submits one selected variant only: `{selectedVariantId || scriptVariants[0]?.variant_id || "none"}`.
               </p>
             )}
           </div>
@@ -1027,6 +1086,59 @@ export function CreateJobWorkbench() {
           </div>
         )}
       </aside>
+
+      {isVariantModalOpen && createdJob?.mode === "ugc" && (
+        <div className="variant-modal-overlay" role="presentation">
+          <div className="variant-modal" role="dialog" aria-modal="true" aria-labelledby="ugc-variant-title">
+            <div className="variant-modal-head">
+              <p className="eyebrow">UGC Script Selection</p>
+              <h3 id="ugc-variant-title" className="panel-subheading">
+                Choose one script before rendering
+              </h3>
+              <p className="caption">
+                Fal submission is blocked until a script is selected. Only one variant is submitted per run.
+              </p>
+            </div>
+
+            <div className="variant-option-list">
+              {scriptVariants.map((variant) => {
+                const active = modalVariantId === variant.variant_id;
+                return (
+                  <button
+                    type="button"
+                    key={variant.variant_id}
+                    className={`variant-option ${active ? "active" : ""}`}
+                    onClick={() => setModalVariantId(variant.variant_id)}
+                  >
+                    <p className="variant-option-title">{variant.variant_id}</p>
+                    <p className="variant-option-copy">{variant.hook}</p>
+                    <p className="hint">
+                      Angle: {variant.angle} | Setting: {variant.setting} | Tone: {variant.tone}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="cta-row compact-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setIsVariantModalOpen(false);
+                  setShouldAutoRunAfterVariantSelect(false);
+                }}
+              >
+                Close
+              </button>
+              <button type="button" className="btn btn-accent" onClick={confirmVariantSelection}>
+                Select Script
+                {shouldAutoRunAfterVariantSelect ? " & Render" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

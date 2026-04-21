@@ -5,13 +5,21 @@ from app.services.jobs import job_service
 
 class ExportManifestService:
     def build_manifest(self, *, job_id: str) -> ExportManifestResponse | None:
-        if job_service.get_job(job_id) is None:
+        found = job_service.get_job(job_id)
+        if found is None:
             return None
+
+        selected_sequence: int | None = None
+        if found.mode == "ugc":
+            render_selection = job_service.get_render_selection(job_id) or {}
+            render_all = bool(render_selection.get("render_all_variants", False))
+            raw_sequence = render_selection.get("selected_variant_sequence")
+            if not render_all and isinstance(raw_sequence, int) and raw_sequence >= 0:
+                selected_sequence = raw_sequence
 
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
+                query = """
                     select ru.id as unit_id,
                            ru.sequence as unit_sequence,
                            ru.pattern as unit_pattern,
@@ -25,10 +33,13 @@ class ExportManifestService:
                     from public.render_unit ru
                     join public.segment s on s.render_unit_id = ru.id
                     where ru.job_id = %s
-                    order by ru.sequence asc, s."order" asc
-                    """,
-                    (job_id,),
-                )
+                """
+                params: list[object] = [job_id]
+                if selected_sequence is not None:
+                    query += " and ru.sequence = %s"
+                    params.append(selected_sequence)
+                query += ' order by ru.sequence asc, s."order" asc'
+                cur.execute(query, tuple(params))
                 rows = cur.fetchall()
 
         timeline: list[ExportSegmentItem] = []

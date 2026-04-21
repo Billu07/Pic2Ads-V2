@@ -206,17 +206,34 @@ async def run_local_pipeline(
         selected_variant_id = req.selected_variant_id.strip()
 
     allowed_sequences: set[int] | None = None
+    selected_variant_for_state: str | None = None
+    selected_sequence_for_state: int | None = None
     if found.mode == "ugc" and not render_all_variants:
-        target_sequence = 0
-        if selected_variant_id:
-            for idx, variant in enumerate(scripts.output.scripts):
-                if variant.variant_id == selected_variant_id:
-                    target_sequence = idx
-                    break
+        if not selected_variant_id:
+            raise HTTPException(status_code=400, detail="ugc_variant_selection_required")
+
+        target_sequence: int | None = None
+        for idx, variant in enumerate(scripts.output.scripts):
+            if variant.variant_id == selected_variant_id:
+                target_sequence = idx
+                break
+        if target_sequence is None:
+            raise HTTPException(status_code=400, detail="selected_variant_id_invalid")
+
         allowed_sequences = {target_sequence}
+        selected_variant_for_state = selected_variant_id
+        selected_sequence_for_state = target_sequence
+
+    job_service.set_render_selection(
+        job_id,
+        selected_variant_id=selected_variant_for_state,
+        selected_variant_sequence=selected_sequence_for_state,
+        render_all_variants=render_all_variants if found.mode == "ugc" else False,
+    )
 
     submitted = 0
     failed = 0
+    blocked = 0
     last_error: str | None = None
     for unit in units:
         if allowed_sequences is not None and unit.sequence not in allowed_sequences:
@@ -235,12 +252,15 @@ async def run_local_pipeline(
                     last_error = str(exc)
                     continue
 
-                if str(result.get("status")) == "submitted":
+                status = str(result.get("status"))
+                if status == "submitted":
                     submitted += 1
+                elif status.startswith("blocked_"):
+                    blocked += 1
                 else:
                     failed += 1
 
-    video_status = f"submitted_{submitted}_failed_{failed}"
+    video_status = f"submitted_{submitted}_blocked_{blocked}_failed_{failed}"
     if last_error:
         video_status = f"{video_status}_last_error_{last_error}"
     return LocalPipelineRunResponse(

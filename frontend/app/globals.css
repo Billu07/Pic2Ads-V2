@@ -1055,6 +1055,230 @@ main {
   font-size: 1.46rem;
 }
 
+.job-live-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.job-live-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.job-live-title {
+  margin: 0;
+  font-size: clamp(1.7rem, 2.8vw, 2.5rem);
+}
+
+.job-live-subline {
+  margin: 0.3rem 0 0;
+}
+
+.job-live-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.job-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(220, 236, 240, 0.22);
+  border-radius: 999px;
+  padding: 0.35rem;
+  background: rgba(6, 17, 22, 0.72);
+  width: fit-content;
+}
+
+.job-tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #c8dbe2;
+  padding: 0.42rem 0.82rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.22s ease;
+}
+
+.job-tab:hover {
+  border-color: rgba(222, 238, 242, 0.34);
+  color: #edf5f7;
+}
+
+.job-tab.active {
+  border-color: rgba(37, 183, 168, 0.7);
+  background: rgba(37, 183, 168, 0.14);
+  color: #c5f6f0;
+}
+
+.job-pane {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.job-progress-card {
+  border: 1px solid rgba(220, 236, 240, 0.22);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(9, 23, 29, 0.68);
+}
+
+.job-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.job-progress-track {
+  margin-top: 0.45rem;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(221, 237, 241, 0.14);
+  height: 10px;
+  overflow: hidden;
+}
+
+.job-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1ba89c 0%, #5fd8cb 100%);
+  transition: width 0.32s ease;
+}
+
+.segment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.segment-card,
+.output-card {
+  border: 1px solid rgba(220, 236, 240, 0.24);
+  border-radius: 14px;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.segment-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.segment-preview {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  border: 1px solid rgba(222, 238, 242, 0.2);
+  object-fit: cover;
+  background: rgba(4, 10, 13, 0.85);
+}
+
+.segment-placeholder {
+  display: grid;
+  place-items: center;
+  color: #9fb3bc;
+  font-size: 0.84rem;
+}
+
+.segment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.output-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.variant-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 6, 8, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.variant-modal {
+  width: min(920px, 100%);
+  max-height: min(88vh, 900px);
+  overflow: auto;
+  border: 1px solid rgba(218, 234, 239, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(6, 16, 22, 0.98), rgba(5, 12, 16, 0.95));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.variant-modal-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.variant-option-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.variant-option {
+  border: 1px solid rgba(220, 236, 240, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  text-align: left;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: border-color 0.22s ease, background 0.22s ease, transform 0.22s ease;
+}
+
+.variant-option:hover {
+  border-color: rgba(95, 216, 203, 0.55);
+  background: rgba(95, 216, 203, 0.08);
+  transform: translateY(-2px);
+}
+
+.variant-option.active {
+  border-color: rgba(95, 216, 203, 0.75);
+  background: rgba(95, 216, 203, 0.12);
+}
+
+.variant-option-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #dff4f2;
+}
+
+.variant-option-copy {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #d1dde2;
+}
+
 .job-form {
   margin-top: 0.95rem;
   display: grid;
@@ -1435,6 +1659,12 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .segment-grid,
+  .output-grid,
+  .variant-option-list {
+    grid-template-columns: 1fr;
+  }
+
   .pricing-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1542,6 +1772,15 @@ main {
 
   .mode-gallery-grid {
     grid-template-columns: 1fr;
+  }
+
+  .job-tabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .job-tab {
+    flex: 1;
   }
 
   .pricing-grid {

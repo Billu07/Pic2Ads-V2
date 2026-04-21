@@ -35,8 +35,11 @@ class SeedancePipelineService:
         idempotency_key: str | None = None,
         generate_audio: bool = True,
     ) -> dict[str, Any]:
-        segment = render_unit_service.get_segment_for_job(job_id=job_id, segment_id=segment_id)
-        if segment is None:
+        context = render_unit_service.get_segment_submission_context(
+            job_id=job_id,
+            segment_id=segment_id,
+        )
+        if context is None:
             raise RuntimeError("segment_not_found_for_job")
 
         product_context = job_service.get_job_product_context(job_id)
@@ -44,17 +47,42 @@ class SeedancePipelineService:
             raise RuntimeError("job_not_found")
         product_name, product_image_url = product_context
 
-        prompt = segment.prompt_seed or f"Handheld product ad shot for {product_name}"
+        prompt = context["prompt_seed"] or f"Handheld product ad shot for {product_name}"
+        endpoint_id = settings.fal_seedance_image_endpoint
         arguments: dict[str, Any] = {
             "prompt": prompt,
-            "duration": segment.duration_s,
+            "duration": int(context["duration_s"]),
             "aspect_ratio": "9:16",
             "resolution": "720p",
             "generate_audio": bool(generate_audio),
-            "image_url": product_image_url,
         }
+        if context["pattern"] == "extend_chain" and int(context["order"]) > 0:
+            previous_segment_id = context["previous_segment_id"]
+            previous_output_video_url = context["previous_output_video_url"]
+            if previous_segment_id is None:
+                return {
+                    "job_id": job_id,
+                    "segment_id": segment_id,
+                    "status": "blocked_extend_previous_missing",
+                    "deduped": False,
+                }
+            if (
+                context["previous_segment_status"] != "completed"
+                or not isinstance(previous_output_video_url, str)
+                or not previous_output_video_url
+            ):
+                return {
+                    "job_id": job_id,
+                    "segment_id": segment_id,
+                    "status": "blocked_extend_source_pending",
+                    "blocked_on_segment_id": previous_segment_id,
+                    "deduped": False,
+                }
+            endpoint_id = settings.fal_seedance_reference_endpoint
+            arguments["video_urls"] = [previous_output_video_url]
+        else:
+            arguments["image_url"] = product_image_url
 
-        endpoint_id = settings.fal_seedance_image_endpoint
         submit_payload: dict[str, Any] = {
             "endpoint_id": endpoint_id,
             "arguments": arguments,
@@ -125,6 +153,57 @@ class SeedancePipelineService:
             "status": "submitted",
             "deduped": False,
         }
+
+    async def auto_continue_extend_chain(
+        self,
+        *,
+        job_id: str,
+        completed_segment_id: int,
+    ) -> dict[str, Any] | None:
+        context = render_unit_service.get_segment_submission_context(
+            job_id=job_id,
+            segment_id=completed_segment_id,
+        )
+        if context is None:
+            return None
+        if context["pattern"] != "extend_chain":
+            return None
+
+        next_segment = render_unit_service.get_segment_by_unit_order(
+            job_id=job_id,
+            render_unit_id=int(context["render_unit_id"]),
+            order=int(context["order"]) + 1,
+        )
+        if next_segment is None:
+            return None
+        if next_segment.status != "queued":
+            return None
+
+        generate_audio = self._infer_generate_audio_from_previous(
+            completed_segment_id=completed_segment_id
+        )
+        return await self.submit_for_segment(
+            job_id=job_id,
+            segment_id=next_segment.id,
+            idempotency_key=f"auto-chain-{job_id}-seg-{next_segment.id}",
+            generate_audio=generate_audio,
+        )
+
+    @staticmethod
+    def _infer_generate_audio_from_previous(*, completed_segment_id: int) -> bool:
+        latest = provider_task_service.get_latest_task_for_segment(
+            provider="fal",
+            segment_id=completed_segment_id,
+        )
+        if latest is None:
+            return True
+        submit_payload = latest.get("submit_payload")
+        if not isinstance(submit_payload, dict):
+            return True
+        arguments = submit_payload.get("arguments")
+        if not isinstance(arguments, dict):
+            return True
+        return bool(arguments.get("generate_audio", True))
 
 
 seedance_pipeline_service = SeedancePipelineService()

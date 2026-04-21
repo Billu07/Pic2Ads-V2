@@ -216,6 +216,37 @@ class ProviderTaskService:
             "dead_lettered": bool(row["dead_lettered"]) if row["dead_lettered"] is not None else False,
         }
 
+    def get_latest_task_for_segment(
+        self,
+        *,
+        provider: str,
+        segment_id: int,
+    ) -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select provider_task_id, status, submit_payload, latest_payload, model, job_id
+                    from public.provider_task
+                    where provider = %s
+                      and segment_id = %s
+                    order by created_at desc
+                    limit 1
+                    """,
+                    (provider, segment_id),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+        return {
+            "provider_task_id": str(row["provider_task_id"]),
+            "status": str(row["status"]),
+            "submit_payload": row["submit_payload"] if isinstance(row["submit_payload"], dict) else {},
+            "latest_payload": row["latest_payload"] if isinstance(row["latest_payload"], dict) else {},
+            "model": str(row["model"]) if row["model"] else None,
+            "job_id": str(row["job_id"]),
+        }
+
     def update_from_webhook(
         self,
         *,

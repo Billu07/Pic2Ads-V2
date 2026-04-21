@@ -573,6 +573,66 @@ class JobService:
             return language
         return "en"
 
+    def set_render_selection(
+        self,
+        job_id: str,
+        *,
+        selected_variant_id: str | None,
+        selected_variant_sequence: int | None,
+        render_all_variants: bool,
+    ) -> bool:
+        payload = {
+            "selected_variant_id": selected_variant_id,
+            "selected_variant_sequence": selected_variant_sequence,
+            "render_all_variants": bool(render_all_variants),
+        }
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    update public.ad_job
+                    set workflow_state = jsonb_set(
+                      coalesce(workflow_state, '{}'::jsonb),
+                      '{render}',
+                      %s::jsonb,
+                      true
+                    )
+                    where id = %s
+                    """,
+                    (json.dumps(payload), job_id),
+                )
+                updated = cur.rowcount > 0
+            conn.commit()
+        return updated
+
+    def get_render_selection(self, job_id: str) -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select workflow_state
+                    from public.ad_job
+                    where id = %s
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            return None
+
+        workflow_state = row["workflow_state"] if isinstance(row["workflow_state"], dict) else {}
+        render = workflow_state.get("render")
+        if not isinstance(render, dict):
+            return {}
+        out: dict[str, Any] = {}
+        if isinstance(render.get("selected_variant_id"), str):
+            out["selected_variant_id"] = render["selected_variant_id"]
+        if isinstance(render.get("selected_variant_sequence"), int):
+            out["selected_variant_sequence"] = int(render["selected_variant_sequence"])
+        if isinstance(render.get("render_all_variants"), bool):
+            out["render_all_variants"] = bool(render["render_all_variants"])
+        return out
+
     def mark_running(self, job_id: str) -> bool:
         return self.set_status(job_id, "running")
 

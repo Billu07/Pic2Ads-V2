@@ -9,6 +9,7 @@ from app.services.jobs import job_service
 from app.services.provider_payloads import extract_provider_artifacts
 from app.services.provider_tasks import provider_task_service
 from app.services.render_units import render_unit_service
+from app.services.seedance_pipeline import seedance_pipeline_service
 
 router = APIRouter(prefix="/webhooks")
 
@@ -81,7 +82,7 @@ def _map_status(raw_status: str | None, has_error: bool) -> str | None:
     return None
 
 
-def _handle_fal_callback(
+async def _handle_fal_callback(
     *,
     payload: FalWebhookPayload,
     job_id: str | None,
@@ -191,6 +192,21 @@ def _handle_fal_callback(
     except PsycopgError as exc:
         raise HTTPException(status_code=500, detail="db_status_update_failed") from exc
 
+    if (
+        mapped_status == "completed"
+        and resolved_job_id
+        and provider_task_record
+        and provider_task_record.get("segment_id") is not None
+    ):
+        try:
+            await seedance_pipeline_service.auto_continue_extend_chain(
+                job_id=resolved_job_id,
+                completed_segment_id=int(provider_task_record["segment_id"]),
+            )
+        except RuntimeError:
+            # Do not fail webhook acknowledgement on continuation attempt.
+            pass
+
     return FalWebhookResponse(
         accepted=True,
         job_id=resolved_job_id,
@@ -205,13 +221,13 @@ def _handle_fal_callback(
 
 
 @router.post("/fal", response_model=FalWebhookResponse)
-def fal_callback(
+async def fal_callback(
     payload: FalWebhookPayload,
     job_id: str | None = Query(default=None),
     secret: str | None = Query(default=None),
     x_fal_webhook_secret: str | None = Header(default=None),
 ) -> FalWebhookResponse:
-    return _handle_fal_callback(
+    return await _handle_fal_callback(
         payload=payload,
         job_id=job_id,
         provided_secret=x_fal_webhook_secret or secret,
@@ -219,14 +235,14 @@ def fal_callback(
 
 
 @router.post("/kie", response_model=FalWebhookResponse)
-def legacy_kie_callback_alias(
+async def legacy_kie_callback_alias(
     payload: FalWebhookPayload,
     job_id: str | None = Query(default=None),
     secret: str | None = Query(default=None),
     x_fal_webhook_secret: str | None = Header(default=None),
 ) -> FalWebhookResponse:
     # Temporary alias to avoid breaking existing callback URLs during provider transition.
-    return _handle_fal_callback(
+    return await _handle_fal_callback(
         payload=payload,
         job_id=job_id,
         provided_secret=x_fal_webhook_secret or secret,
